@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "GreenByte",
+    "slug": "greenbyte-customer-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B2E26"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.greenbyte.customer",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B2E26"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

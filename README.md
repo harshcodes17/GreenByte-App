@@ -1,326 +1,109 @@
-# GreenByte App
+# GreenByte Platform
 
-GreenByte is an e-waste collection and rewards platform with three user roles:
+GreenByte is a modernized e-waste collection and rewards platform designed to streamline sustainable recycling through a transparent, administrative-driven lifecycle.
 
-- `customer` can register, request pickups, track impact, and redeem rewards.
-- `recycler` can view open requests, accept jobs, and move pickups through collection stages.
-- `admin` can monitor overall users, requests, recyclers, and dashboard totals.
+The platform has three user roles:
+- `customer`: Register, schedule drop-offs, track impact, and redeem rewards.
+- `recycler`: Manage collection points, accept drop-off requests, and move items through recycling stages.
+- `admin`: Monitor system-wide analytics, approve pricing, and manually assign recyclers to validated requests.
 
-This repo contains both the Expo app and the Node.js + MongoDB backend used by the dashboards, rewards, pickups, and Firebase phone authentication flow.
+## Recent Modernization & UX Improvements
 
-## What is in this repo
+The platform has recently undergone a significant transformation to improve usability and administrative control:
+- **Drop-off Only Model**: Shifted from doorstep pickups to a streamlined "Drop-off" model. Customers now select specific recycler collection points when scheduling.
+- **Modern Notification System**: Replaced blocking native alerts with a global, non-blocking **Toast Notification System** (`ToastContext` + `InlineToast`) for a seamless mobile-web experience.
+- **Refined Admin Workflows**:
+  - **Manual Assignment**: Admins now manually assign specific recyclers to requests once price negotiations are resolved.
+  - **Force Delete**: Admins have permanent delete authority over any request, bypassing standard lifecycle restrictions.
+- **Dynamic Tracking UI**: The customer tracking timeline is now specialized for the drop-off flow, providing clear status updates (e.g., "Drop-off Location Approved", "Drop-off Pending").
+
+## Tech Stack
+
+- **Frontend**: Expo (React Native), React Navigation, Material Community Icons, Context API (Toast & App state).
+- **Backend**: Node.js, Express, Mongoose (MongoDB), Zod Validation.
+- **AI Integration**: Gemini API for automated e-waste value estimation and reasoning.
+- **Database**: MongoDB (Local or Docker).
+
+## Repository Structure
 
 ```text
 GreenByte-App
-├── App.js                  # Expo app with customer, recycler, and admin flows
-├── package.json            # Frontend scripts
+├── App.js                  # Global entry point, navigation, and state providers
+├── firebaseClient.js       # Firebase Auth configuration
+├── package.json            # Frontend scripts and dependencies
 └── backend
     ├── src
-    │   ├── config          # env + Mongo connection
-    │   ├── controllers     # request/response handlers
-    │   ├── models          # MongoDB schemas
-    │   ├── routes          # API routes under /api/v1
-    │   ├── services        # business logic
-    │   └── validators      # zod validation
-    ├── scripts             # seed and analytics pipeline
-    └── package.json        # Backend scripts
+    │   ├── controllers     # Request handlers (Admin, Recycler, Pickup, Auth)
+    │   ├── models          # Mongoose Schemas (User, Pickup, RecyclerProfile, etc.)
+    │   ├── routes          # API versioning (v1) and route definitions
+    │   ├── services        # Core business logic and status transitions
+    │   └── validators      # Schema validation with Zod
+    ├── scripts             # Seeding, analytics, and test data scripts
+    └── package.json        # Backend dependencies
 ```
 
-## Tech stack
+## Getting Started
 
-- Frontend: Expo, React Native, React Navigation
-- Backend: Node.js, Express, Mongoose, Zod
-- Database: MongoDB
-- Local runtime: Docker for MongoDB, optional
-
-## Main product flows
-
-### Customer flow
-
-1. Register with name, role, and phone number.
-2. Log in with phone number.
-3. Request a Firebase OTP.
-4. Verify the OTP through Firebase.
-5. Browse the catalog and estimate scrap value.
-6. Create a pickup request.
-7. Track pickup status, impact, and rewards.
-
-### Recycler flow
-
-1. Log in with recycler role.
-2. View open requests in the queue.
-3. Accept or reject a request.
-4. Update request progress as collection moves forward.
-
-### Admin flow
-
-1. Log in with admin role.
-2. View user counts, request counts, recycler data, and transaction totals.
-3. Inspect dashboard and recycler management endpoints.
-
-## Quick start
-
-### 1. Install frontend dependencies
-
+### 1. Install Dependencies
 ```bash
+# Frontend
 npm install
+
+# Backend
+cd backend && npm install
 ```
 
-### 2. Install backend dependencies
+### 2. Start Services
+1. **Database**: Ensure MongoDB is running on `mongodb://localhost:27017/greenbyte`.
+2. **Backend**: From the repo root, run `npm run backend:dev` (starts on port 4000).
+3. **Frontend**: From the repo root, run `npm start` or `npm run web`.
 
-```bash
-cd backend
-npm install
-```
-
-### 3. Start MongoDB
-
-If Docker is available:
-
-```bash
-cd backend
-docker compose up -d
-```
-
-### 4. Configure backend environment
-
-The backend already expects:
-
-```env
-PORT=4000
-NODE_ENV=development
-MONGODB_URI=mongodb://127.0.0.1:27017/greenbyte
-AUTO_SEED=false
-```
-
-### 5. Seed catalog and rewards
-
-From the repo root:
-
+### 3. Seed Data
+Populate the catalog and sample users:
 ```bash
 npm run backend:seed
 ```
 
-### 6. Start the backend
+## Main Product Flows
 
-From the repo root:
+### Customer Flow
+1. **Log in**: Authenticate with phone number (OTP-backed).
+2. **Select E-Waste**: Browse the catalog and add items for estimation.
+3. **Schedule Drop-off**: Select a preferred **Recycler Collection Point** and a drop-off date.
+4. **Track Status**: Monitor the "Drop-off Status" screen for admin approval and recycler validation.
+5. **Impact**: View CO2 saved and coins earned on the dashboard.
 
-```bash
-npm run backend:dev
-```
+### Admin Flow
+1. **Overview**: Monitor system-wide totals (CO2, weight, users).
+2. **Scrutinize Requests**: Review AI-estimated prices and approve or negotiate with customers.
+3. **Assign Recycler**: Once the price is accepted, manually assign a recycler from the pool to the request.
+4. **Lifecycle Control**: Force-delete invalid requests or process payments once items are recycled.
 
-### 7. Start the Expo app
+### Recycler Flow
+1. **Assigned Jobs**: View requests assigned by the admin.
+2. **Process Waste**: Advance the status from "Drop-off Location Approved" to "In Transit" (if applicable), "Collected", and "Recycled".
+3. **Dashboard**: Track collection metrics and facility availability.
 
-For web:
+## API Overview (v1)
 
-```bash
-npm run web
-```
+- **Auth**: `POST /auth/register`, `POST /auth/login`
+- **Pickups**: `POST /pickups/estimate`, `POST /pickups` (Drop-off requests)
+- **Recyclers**: `GET /recyclers` (Public list for customers), `GET /recyclers/:id/profile`
+- **Admin**:
+  - `GET /admin/overview`
+  - `GET /admin/requests`
+  - `POST /admin/requests/:id/assign` (Manual assignment)
+  - `DELETE /admin/requests/:id` (Force delete)
 
-For mobile:
+## Developer Notes
 
-```bash
-npm run mobile
-```
+- **AI Estimation**: Requires a `GEMINI_API_KEY` for automated scrap valuation.
+- **Toast System**: Controlled via the `useToast()` hook and the `<ToastProvider>` in `App.js`.
+- **Validation**: All inputs are strictly validated via Zod on the backend (`backend/src/validators`).
+- **Styling**: Uses a custom `THEME` object for consistent brand colors and aesthetic premium look.
 
-For Android over USB:
+## Recommended Next Steps
 
-```bash
-npm run mobile:usb
-```
-
-## Firebase phone auth
-
-The app now sends **real OTP SMS messages with Firebase Authentication**.
-
-Current login flow:
-
-1. The app checks that the selected `customer`, `recycler`, or `admin` account exists in the backend with `POST /api/v1/auth/login`.
-2. The app starts Firebase phone verification from [firebaseClient.js](/home/harshbamane/Documents/my_greenbyte/GreenByte-App/firebaseClient.js:1).
-3. Firebase reCAPTCHA runs through `expo-firebase-recaptcha`.
-4. Firebase sends the OTP SMS to the phone number.
-5. After the user enters the code, Firebase verifies the OTP.
-6. The app then loads the matching backend user profile and opens the dashboard.
-
-### Required Firebase console setup
-
-In Firebase Console:
-
-1. Go to `Authentication` -> `Sign-in method`.
-2. Enable `Phone` as a provider.
-3. For web testing, make sure your domain is in `Authorized domains`.
-4. If you are only testing, add Firebase test phone numbers to avoid quota issues.
-
-### Important local setup note
-
-The backend is still required because roles, profiles, pickups, rewards, and dashboards come from MongoDB.
-
-If OTP still does not arrive, check these first:
-
-- The account must already exist for the selected role in MongoDB.
-- `Phone` auth must be enabled in Firebase Authentication.
-- The Firebase project must not have exhausted SMS quota.
-- The backend must be running on port `4000`.
-- On a physical phone, `localhost` in `App.js` will not point to your computer.
-
-For a real device, replace:
-
-```js
-const API_BASE_URL = 'http://localhost:4000/api/v1';
-```
-
-with your computer's LAN IP, for example:
-
-```js
-const API_BASE_URL = 'http://192.168.1.20:4000/api/v1';
-```
-
-### Legacy backend OTP endpoints
-
-The backend still contains:
-
-- `POST /auth/request-otp`
-- `POST /auth/verify-otp`
-
-Those endpoints are now legacy demo endpoints and are no longer used by the app login screen.
-
-## API overview
-
-Base URL:
-
-```text
-http://localhost:4000/api/v1
-```
-
-Main routes:
-
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/request-otp`
-- `POST /auth/verify-otp`
-- `GET /catalog`
-- `POST /pickups/estimate`
-- `POST /pickups`
-- `GET /pickups?userId=<userId>`
-- `PATCH /pickups/:pickupId/status`
-- `GET /rewards`
-- `POST /rewards/redeem`
-- `GET /dashboard/:userId`
-- `GET /admin/overview`
-- `GET /admin/requests`
-- `GET /admin/recyclers`
-
-## MongoDB collections
-
-The main collections created by this app are:
-
-- `users`
-- `pickups`
-- `catalogitems`
-- `recyclerprofiles`
-- `rewards`
-- `rewardredemptions`
-- `analyticssnapshots`
-
-## How dashboard data flows through MongoDB
-
-### User dashboard flow
-
-1. A customer creates a pickup.
-2. The backend writes the pickup into `pickups`.
-3. Pickup totals such as `totalEstimate`, `totalWeightKg`, and `impact` are stored on that document.
-4. When pickup status becomes `completed` or `paid`, the backend credits coins to the user.
-5. `GET /dashboard/:userId` reads:
-   - the user from `users`
-   - that user's pickup totals from `pickups`
-   - recent redemptions from `rewardredemptions`
-   - the latest system snapshot from `analyticssnapshots`
-6. The API returns both `user` and `system` dashboard sections together.
-
-### System dashboard flow
-
-1. Pickup and reward data accumulate in MongoDB.
-2. `backend/scripts/runAnalyticsPipeline.js` runs the aggregation pipeline.
-3. `buildSystemSnapshot()` in `backend/src/services/analyticsService.js` calculates:
-   - total users
-   - total pickups
-   - completed pickups
-   - total estimated value
-   - total weight
-   - total CO2 saved
-   - total trees saved
-   - total raw material recovered
-   - total coins redeemed
-   - top pickup categories
-4. The snapshot is stored in `analyticssnapshots`.
-5. The dashboard endpoint reads the latest snapshot and serves it to the app.
-
-## Useful MongoDB checks
-
-Open the database:
-
-```bash
-mongosh greenbyte
-```
-
-See collections:
-
-```javascript
-db.getCollectionNames()
-```
-
-See registered users:
-
-```javascript
-db.users.find({}, { name: 1, phone: 1, role: 1, coinsBalance: 1, authOtp: 1 })
-```
-
-See recent pickups:
-
-```javascript
-db.pickups
-  .find({}, { user: 1, status: 1, totalEstimate: 1, totalWeightKg: 1, impact: 1, createdAt: 1 })
-  .sort({ createdAt: -1 })
-```
-
-See reward redemptions:
-
-```javascript
-db.rewardredemptions.find().sort({ createdAt: -1 })
-```
-
-See latest analytics snapshot:
-
-```javascript
-db.analyticssnapshots.find().sort({ snapshotDate: -1 }).limit(1)
-```
-
-Rebuild dashboard aggregates after new data:
-
-```bash
-npm run backend:pipeline
-```
-
-## Developer notes
-
-- Backend validation uses Zod.
-- Business logic lives mainly in `backend/src/services`.
-- Pickup impact calculations are in `backend/src/utils/calculatePickupMetrics.js`.
-- Legacy demo OTP logic still exists in `backend/src/services/authService.js`.
-- The dashboard endpoint is in `backend/src/controllers/dashboardController.js`.
-- Snapshot generation is in `backend/src/services/analyticsService.js`.
-
-## Current limitations
-
-- Firebase config still lives in a local JS file instead of environment variables.
-- `App.js` still uses a single hardcoded API base URL.
-- There are no automated tests yet.
-- Frontend and backend configuration are not yet environment-driven.
-
-## Recommended next improvements
-
-1. Move frontend API and Firebase settings into environment variables.
-2. Verify Firebase ID tokens on the backend with `firebase-admin` for stronger auth.
-3. Add tests for auth, pickups, and dashboard aggregation.
-4. Add role-based protection for admin and recycler endpoints.
-5. Add Swagger or Postman documentation for the backend.
+1. **Environment Hardening**: Move the `GEMINI_API_KEY` and MongoDB connection strings into proper `.env` files.
+2. **Push Notifications**: Integrate Expo Push Notifications to alert customers of price approvals and recycler assignments.
+3. **Automated Testing**: Implement integration tests for the administrative manual assignment flow.

@@ -430,6 +430,13 @@ function getRequestStatusMeta(status) {
   return REQUEST_STATUS_META[status] || REQUEST_STATUS_META.submitted;
 }
 
+function getButtonLabel(status) {
+  return {
+    assigned: 'Mark as Collected',
+    collected: 'Send to Facility'
+  }[status];
+}
+
 async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
@@ -1762,12 +1769,7 @@ function RecyclerOperationsScreen() {
 
         {assignedRequests.length > 0 && (
           <View style={styles.listCard}>
-            <View style={styles.trackingHeroHeader}>
-               <Text style={[styles.cardTitle, { flex: 1 }]}>Your Active Jobs</Text>
-               <Pressable onPress={() => navigation.navigate('Assigned')}>
-                 <Text style={[styles.trackingHeroLink, { marginTop: 0 }]}>View all</Text>
-               </Pressable>
-            </View>
+            
             {assignedRequests.slice(0, 2).map((request) => (
               <View key={request.id} style={styles.requestCard}>
                 <View style={styles.requestCardHeader}>
@@ -1782,12 +1784,7 @@ function RecyclerOperationsScreen() {
                   </View>
                 </View>
                 <Text style={styles.requestDetailLine}>Location: {request.pickupDetails?.address || '-'}</Text>
-                <Pressable 
-                  style={[styles.primaryMiniButton, { marginTop: 8 }]} 
-                  onPress={() => navigation.navigate('Assigned')}
-                >
-                  <Text style={styles.primaryMiniButtonText}>Update Progress</Text>
-                </Pressable>
+               
               </View>
             ))}
           </View>
@@ -1860,13 +1857,6 @@ function RecyclerAssignedScreen({ navigation }) {
     } catch (e) {
       showToast(e.message, 'error');
     }
-  };
-
-  const getButtonLabel = (status) => {
-    return {
-      assigned: 'Mark as Collected',
-      collected: 'Send to Facility'
-    }[status];
   };
 
   return (
@@ -2096,13 +2086,13 @@ function TrackPickupScreen({ navigation, route }) {
   // Refetch the pickup data from the backend after any mutation
   const refetchPickup = React.useCallback(async () => {
     try {
-      if (user.role === 'admin') {
+      if (user?.role === 'admin') {
         const res = await apiRequest('/admin/requests');
         setPickupHistory((res.data || []).map(mapBackendPickupToFrontend).filter(Boolean));
-      } else if (user.role === 'customer' && user._id) {
+      } else if (user?.role === 'customer' && user?._id) {
         const res = await apiRequest(`/pickups?userId=${user._id}`);
         setPickupHistory((res.data || []).map(mapBackendPickupToFrontend).filter(Boolean));
-      } else if (user.role === 'recycler' && user._id) {
+      } else if (user?.role === 'recycler' && user?._id) {
         const res = await apiRequest(`/recyclers/${user._id}/queue?scope=open`);
         setPickupHistory((res.data || []).map(mapBackendPickupToFrontend).filter(Boolean));
       }
@@ -2121,7 +2111,7 @@ function TrackPickupScreen({ navigation, route }) {
   }, []);
 
   React.useEffect(() => {
-    if (user.role === 'admin' && pickup?.status === 'price_accepted') {
+    if (user?.role === 'admin' && pickup?.status === 'price_accepted') {
       apiRequest('/admin/recyclers').then(res => {
         if (res.success && res.data) {
           setAdminRecyclers(
@@ -2224,7 +2214,7 @@ function TrackPickupScreen({ navigation, route }) {
           ) : null}
         </View>
 
-        {pickup.status !== 'cancelled' && pickup.status !== 'rejected' && user.role !== 'admin' && (
+        {pickup.status !== 'cancelled' && pickup.status !== 'rejected' && user?.role !== 'admin' && (
           <Pressable 
             style={[styles.secondaryButton, { marginTop: 24, borderColor: '#FFB4A9' }]}
             onPress={async () => {
@@ -2245,7 +2235,7 @@ function TrackPickupScreen({ navigation, route }) {
           </Pressable>
         )}
 
-        {user.role === 'admin' && (
+        {user?.role === 'admin' && (
           <Pressable 
             style={[styles.secondaryButton, { marginTop: 24, borderColor: '#D32F2F', backgroundColor: '#FFF5F5' }]}
             onPress={async () => {
@@ -2375,7 +2365,38 @@ function TrackPickupScreen({ navigation, route }) {
           </View>
         )}
 
-        {user.role === 'customer' && pickup.status === 'admin_negotiated' && (
+        {user?.role === 'recycler' && (pickup.status === 'assigned' || pickup.status === 'collected') && (
+          <View style={styles.listCard}>
+            <Text style={styles.cardTitle}>Recycler Actions</Text>
+            <Pressable
+              style={styles.primaryButton}
+              onPress={async () => {
+                const currentStatus = pickup.status;
+                const nextStatus = {
+                  assigned: 'collected',
+                  collected: 'in_transit'
+                }[currentStatus];
+                
+                if (!nextStatus) return;
+
+                try {
+                  await apiRequest(`/recyclers/${user?._id}/requests/${pickup.id}/status`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ status: nextStatus })
+                  });
+                  await refetchPickup();
+                  showToast(`Status advanced to ${nextStatus}`);
+                } catch (e) {
+                  showToast(e.message, 'error');
+                }
+              }}
+            >
+              <Text style={styles.primaryButtonText}>{getButtonLabel(pickup.status)}</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {user?.role === 'customer' && pickup.status === 'admin_negotiated' && (
           <View style={styles.listCard}>
             <Text style={styles.cardTitle}>Price Negotiation</Text>
             <Text style={styles.summaryLabel}>Admin has proposed a new price: ₹{pickup.pricing?.negotiatedAmount}</Text>
@@ -2636,13 +2657,13 @@ function MainTabs() {
         }
       })}
     >
-      {user.role === 'recycler' ? (
+      {user?.role === 'recycler' ? (
         <>
           <Tab.Screen name="Dashboard" component={RecyclerOperationsScreen} />
           <Tab.Screen name="Assigned" component={RecyclerAssignedScreen} />
           <Tab.Screen name="Profile" component={ProfileScreen} />
         </>
-      ) : user.role === 'admin' ? (
+      ) : user?.role === 'admin' ? (
         <>
           <Tab.Screen name="Overview" component={AdminOverviewScreen} />
           <Tab.Screen name="Requests" component={AdminRequestsScreen} />

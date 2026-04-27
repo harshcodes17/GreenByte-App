@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Modal,
   Platform,
@@ -319,6 +320,7 @@ function mapBackendPickupToFrontend(pickup) {
       quantity: item.quantity,
       weightKg: item.weightKg || 0
     })),
+    estimationReasoning: pickup.pricing?.estimationReasoning || '',
     totalEstimate: pickup.totalEstimate || 0,
     pricing: {
       estimatedAmount: pickup.pricing?.estimatedAmount || 0,
@@ -1375,10 +1377,10 @@ function SelectEWasteScreen({ navigation }) {
 }
 
 function SchedulePickupScreen({ navigation }) {
-  const { selectedItems, pickupDetails, setPickupDetails } = useApp();
+  const { user, selectedItems, pickupDetails, setPickupDetails } = useApp();
   const [pickupDate, setPickupDate] = useState(pickupDetails.date || '');
   const [address, setAddress] = useState(pickupDetails.address || ''); // Stores the selected drop-off point
-  const [phone, setPhone] = useState(pickupDetails.phone || '');
+  const [phone, setPhone] = useState(pickupDetails.phone || user?.phone || '');
   const [notes, setNotes] = useState(pickupDetails.notes || '');
   const [activePicker, setActivePicker] = useState(null);
   const [formError, setFormError] = useState('');
@@ -1522,9 +1524,45 @@ function OrderSummaryScreen({ navigation }) {
     setPickupDetails
   } = useApp();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEstimating, setIsEstimating] = useState(true);
+  const [aiResult, setAiResult] = useState(null);
   const [formError, setFormError] = useState('');
 
   const total = selectedItems.reduce((sum, item) => sum + computeItemEstimate(item), 0);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    
+    const getAiEstimate = async () => {
+      try {
+        setIsEstimating(true);
+        const response = await apiRequest('/pickups/estimate', {
+          method: 'POST',
+          body: JSON.stringify({
+            items: selectedItems.map((item) => ({
+              category: item.category,
+              name: item.name,
+              quantity: item.quantity,
+              condition: item.condition,
+              yearOfManufacturing: item.yearOfManufacturing,
+              ...(item.unit === 'kg' ? { weightKg: item.weightKg } : {})
+            }))
+          })
+        });
+        
+        if (isMounted) {
+          setAiResult(response.data);
+        }
+      } catch (error) {
+        console.error('Estimation error:', error);
+      } finally {
+        if (isMounted) setIsEstimating(false);
+      }
+    };
+
+    getAiEstimate();
+    return () => { isMounted = false; };
+  }, [selectedItems]);
 
   const onConfirm = async () => {
     setFormError('');
@@ -1592,15 +1630,42 @@ function OrderSummaryScreen({ navigation }) {
               <Text style={styles.summaryLabel}>
                 {item.name} x {item.quantity}
               </Text>
-              <Text style={styles.summaryValue}>{computeItemEstimate(item)}</Text>
+              <Text style={styles.summaryValue}>₹{computeItemEstimate(item)}</Text>
             </View>
           ))}
           <View style={styles.summaryDivider} />
           <View style={styles.summaryRow}>
-            <Text style={styles.totalText}>Estimated Value</Text>
-            <Text style={styles.totalText}>{total}</Text>
+            <Text style={styles.totalText}>Base Estimate</Text>
+            <Text style={styles.totalText}>₹{total}</Text>
           </View>
         </View>
+
+        {isEstimating ? (
+          <View style={[styles.listCard, { alignItems: 'center', padding: 24, backgroundColor: '#F0F7F4' }]}>
+            <ActivityIndicator size="small" color={THEME.primary} />
+            <Text style={{ marginTop: 12, color: THEME.primary, fontWeight: '600' }}>Calculating AI Valuation...</Text>
+          </View>
+        ) : aiResult ? (
+          <View style={[styles.listCard, { backgroundColor: '#F0F7F4', borderLeftWidth: 4, borderLeftColor: THEME.primary }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <MaterialCommunityIcons name="auto-fix" size={20} color={THEME.primary} />
+              <Text style={[styles.cardTitle, { marginBottom: 0, marginLeft: 8 }]}>AI Scrap Estimation</Text>
+            </View>
+            
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Final Estimated Value</Text>
+              <Text style={[styles.totalText, { color: THEME.primary }]}>₹{aiResult.totalEstimate}</Text>
+            </View>
+            
+            {aiResult.estimationReasoning ? (
+              <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E0E0E0' }}>
+                <Text style={{ fontSize: 13, color: '#4A4A4A', fontStyle: 'italic', lineHeight: 18 }}>
+                  "{aiResult.estimationReasoning}"
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={styles.listCard}>
           <Text style={styles.cardTitle}>Drop-off Details</Text>
@@ -1617,9 +1682,9 @@ function OrderSummaryScreen({ navigation }) {
         ) : null}
 
         <Pressable 
-          style={[styles.primaryButton, isSubmitting && styles.buttonDisabled]} 
+          style={[styles.primaryButton, (isSubmitting || isEstimating) && styles.buttonDisabled]} 
           onPress={onConfirm}
-          disabled={isSubmitting}
+          disabled={isSubmitting || isEstimating}
         >
           <Text style={styles.primaryButtonText}>
             {isSubmitting ? 'Confirming...' : 'Confirm Pickup Request'}
@@ -2049,7 +2114,9 @@ function AdminRequestsScreen({ navigation }) {
                             ? styles.statusBadgeDanger
                             : statusMeta.tone === 'active'
                               ? styles.statusBadgeActive
-                              : styles.statusBadgeNeutral
+                              : statusMeta.tone === 'neutral'
+                                ? styles.statusBadgeNeutral
+                                : styles.statusBadgeNeutral
                     ]}
                   >
                     <Text style={styles.statusBadgeText}>{statusMeta.label}</Text>
@@ -2200,6 +2267,16 @@ function TrackPickupScreen({ navigation, route }) {
               <Text style={styles.trackingAddressValue}>{pickup.pickupDetails?.address || '-'}</Text>
             </View>
           </View>
+
+          {pickup.estimationReasoning ? (
+            <View style={[styles.trackingAddressCard, { marginTop: 12, backgroundColor: '#F0F7F4' }]}>
+              <MaterialCommunityIcons name="auto-fix" size={20} color={THEME.primary} />
+              <View style={styles.trackingAddressBody}>
+                <Text style={styles.trackingAddressLabel}>AI Valuation Insight</Text>
+                <Text style={styles.trackingAddressValue}>{pickup.estimationReasoning}</Text>
+              </View>
+            </View>
+          ) : null}
 
           {showPartnerDetails ? (
             <View style={styles.partnerCard}>

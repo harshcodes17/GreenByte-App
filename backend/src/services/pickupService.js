@@ -121,7 +121,8 @@ async function createPickup(payload) {
       estimatedAmount: estimate.totalEstimate,
       acceptedByUser: payload.acceptEstimatedPrice !== false,
       acceptedAt: new Date(),
-      estimationSource: 'gemini-api'
+      estimationSource: 'gemini-api',
+      estimationReasoning: estimate.estimationReasoning
     },
     totalEstimate: estimate.totalEstimate,
     totalWeightKg: estimate.totalWeightKg,

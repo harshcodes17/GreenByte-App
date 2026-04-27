@@ -11,7 +11,8 @@ const envSchema = z.object({
   AUTO_SEED: z
     .string()
     .optional()
-    .transform((value) => value === 'true')
+    .transform((value) => value === 'true'),
+  GEMINI_API_KEY: z.string().optional()
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -131,6 +131,10 @@ const pickupSchema = new mongoose.Schema(
       estimationSource: {
         type: String,
         default: 'rule-based-v1'
+      },
+      estimationReasoning: {
+        type: String,
+        default: ''
       }
     },
     totalEstimate: {

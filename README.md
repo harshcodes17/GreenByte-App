@@ -44,24 +44,74 @@ GreenByte-App
 
 ## Getting Started
 
-### 1. Install Dependencies
+### Prerequisites
+- **Node.js**: v18 or higher
+- **MongoDB**: v6.0 or higher (if running manually)
+- **Docker & Docker Compose**: (Required for Docker setup)
+- **Gemini API Key**: Obtain from [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+---
+
+### 🚀 Quick Start with Docker (Recommended)
+The easiest way to get the full stack running with a pre-populated database:
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/harshcodes17/GreenByte-App.git
+   cd GreenByte-App
+   ```
+
+2. **Configure Environment**:
+   ```bash
+   cd backend
+   # Create a .env file and add your key
+   echo "GEMINI_API_KEY=your_actual_key_here" > .env
+   ```
+
+3. **Spin up the stack**:
+   ```bash
+   docker-compose up --build
+   ```
+   *The API will automatically seed the catalog and rewards data on its first startup.*
+
+4. **Access the App**:
+   The backend will be running at `http://localhost:4000`. You can now start the frontend (see below).
+
+---
+
+### 🛠️ Manual Setup
+
+#### 1. Backend Setup
+1. **Install Dependencies**:
+   ```bash
+   cd backend
+   npm install
+   ```
+2. **Environment Configuration**:
+   Copy `.env.example` to `.env` and fill in your `MONGODB_URI` and `GEMINI_API_KEY`.
+3. **Start the Server**:
+   ```bash
+   npm run dev
+   ```
+
+#### 2. Frontend Setup (Expo)
+1. **Install Dependencies**:
+   ```bash
+   # From the root directory
+   npm install
+   ```
+2. **Start the App**:
+   ```bash
+   npm start
+   # Or for web:
+   npm run web
+   ```
+
+#### 3. Initial Data Seeding
+If you are **not** using Docker and starting with a fresh database, run the seed script:
 ```bash
-# Frontend
-npm install
-
-# Backend
-cd backend && npm install
-```
-
-### 2. Start Services
-1. **Database**: Ensure MongoDB is running on `mongodb://localhost:27017/greenbyte`.
-2. **Backend**: From the repo root, run `npm run backend:dev` (starts on port 4000).
-3. **Frontend**: From the repo root, run `npm start` or `npm run web`.
-
-### 3. Seed Data
-Populate the catalog and sample users:
-```bash
-npm run backend:seed
+cd backend
+npm run seed
 ```
 
 ## Main Product Flows

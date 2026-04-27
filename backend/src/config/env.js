@@ -11,7 +11,7 @@ const envSchema = z.object({
   AUTO_SEED: z
     .string()
     .optional()
-    .transform((value) => value === 'true'),
+    .transform((value) => value === undefined ? true : value === 'true'),
   GEMINI_API_KEY: z.string().optional()
 });
 

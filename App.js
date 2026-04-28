@@ -9,7 +9,8 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
+  ImageBackground
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -643,7 +644,7 @@ const TIME_OPTIONS = createTimeOptions();
 function SplashScreen({ navigation }) {
   React.useEffect(() => {
     const t = setTimeout(() => {
-      navigation.replace('Onboarding');
+      navigation.replace('Login');
     }, 1400);
     return () => clearTimeout(t);
   }, [navigation]);
@@ -689,7 +690,7 @@ function OnboardingScreen({ navigation }) {
               <Text style={styles.primaryButtonText}>Next</Text>
             </Pressable>
           ) : (
-            <Pressable style={styles.primaryButton} onPress={() => navigation.replace('Register')}>
+            <Pressable style={styles.primaryButton} onPress={() => navigation.replace('Login')}>
               <Text style={styles.primaryButtonText}>Get Started</Text>
             </Pressable>
           )}
@@ -755,11 +756,11 @@ function RegisterScreen({ navigation }) {
   return (
     <ScreenShell>
       <View style={styles.containerFlex}>
-        <View style={[styles.authCard, styles.glassCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-
+        <View style={[styles.authCard, styles.glassCard, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.7)', borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+          
           <ScreenHeader
-            title="Register"
-            subtitle="Create your GreenByte account"
+            title="Create Account"
+            subtitle="Join GreenByte to start recycling."
             centered
             compact
           />
@@ -903,7 +904,7 @@ function LoginScreen({ navigation, route }) {
   return (
     <ScreenShell>
       <View style={styles.containerFlex}>
-        <View style={[styles.authCard, styles.glassCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+        <View style={[styles.authCard, styles.glassCard, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.7)', borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
 
           <ScreenHeader
             title="Login"
@@ -1132,111 +1133,125 @@ function HomeScreen({ navigation }) {
 
   const featureCards = [
     {
-      icon: 'truck-fast-outline',
-      title: 'Doorstep Pickup',
-      text: 'Book a pickup in a few taps and let GreenByte collect your e-waste from your address.'
+      icon: 'shield-check-outline',
+      title: 'Certified Recycling',
+      text: 'Every item is processed with industrial-grade sustainability standards and zero landfill waste.'
     },
     {
-      icon: 'clipboard-list-outline',
-      title: 'Easy Item Selection',
-      text: 'Choose appliances, gadgets, and mixed e-scrap with transparent pricing before you confirm.'
-    },
-    {
-      icon: 'map-marker-check-outline',
-      title: 'Track Every Request',
-      text: 'Follow your current request status and revisit past pickups from one place.'
+      icon: 'gift-outline',
+      title: 'Earn Rewards',
+      text: 'Contribute to a greener planet and earn GreenPoints for every successful eco-dropoff.'
     }
+  ];
+
+  const impactStats = [
+    { label: 'Recycled', value: '1.2 Tons', icon: 'recycle', color: '#4CAF50' },
+    { label: 'CO2 Saved', value: '450 Kg', icon: 'molecule-co2', color: '#00BCD4' },
+    { label: 'Points', value: '2,450', icon: 'star-outline', color: '#FFC107' }
   ];
 
   return (
     <ScreenShell>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={[styles.homeHeroCard, styles.glassCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-          <View style={styles.homeHeroBrandRow}>
-            <View style={[styles.homeLogoBadge, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-              <MaterialCommunityIcons name="leaf-circle-outline" size={52} color={theme.primary} />
-            </View>
-            <View style={styles.homeHeroCopy}>
-              <Text style={styles.homeHeroEyebrow}>GreenByte</Text>
-              <Text style={[styles.homeHeroTitle, { color: theme.text }]}>Smart e-waste pickup for homes and businesses</Text>
-              <Text style={[styles.homeHeroText, { color: theme.muted }]}>
-                Welcome{user?.name ? `, ${user.name}` : ''}. Schedule pickups, track ongoing requests, and manage
-                everything from one clean dashboard.
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: 0, paddingBottom: 120 }]} showsVerticalScrollIndicator={false}>
+        {/* Crazy Hero Section */}
+        <View style={[styles.homeHeroCard, { padding: 0, overflow: 'hidden', backgroundColor: 'transparent', marginTop: -10 }]}>
+          <ImageBackground 
+            source={{ uri: 'file:///home/harshbamane/.gemini/antigravity/brain/af036239-4278-4d52-8a58-0a1ecf05fcc0/greenbyte_hero_illustration_1777356963133.png' }}
+            style={{ width: '100%', height: 260, justifyContent: 'center' }}
+            imageStyle={{ borderRadius: 24, opacity: isDarkMode ? 0.8 : 1 }}
+          >
+            <LinearGradient
+              colors={['transparent', isDarkMode ? 'rgba(5, 31, 26, 0.95)' : 'rgba(255, 255, 255, 0.95)']}
+              style={{ padding: 22, paddingTop: 60 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                <View style={[styles.homeLogoBadge, { width: 44, height: 44, backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                  <MaterialCommunityIcons name="leaf" size={24} color={theme.primary} />
+                </View>
+                <Text style={[styles.homeHeroEyebrow, { marginBottom: 0 }]}>GREENBYTE - Powered by Pruthvi Zero Waste</Text>
+              </View>
+              <Text style={[styles.homeHeroTitle, { color: theme.text, fontSize: 32, lineHeight: 38 }]}>
+                Local Action{'\n'}Global Impact.
               </Text>
-            </View>
-          </View>
+            </LinearGradient>
+          </ImageBackground>
+        </View>
 
-          <View style={styles.homeFeatureList}>
+        {/* Impact Stats Row */}
+        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+          {impactStats.map(stat => (
+            <View key={stat.label} style={[styles.glassCardCompact, { flex: 1, padding: 12, alignItems: 'center', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.6)' }]}>
+              <MaterialCommunityIcons name={stat.icon} size={20} color={stat.color} />
+              <Text style={{ fontSize: 16, fontWeight: '800', color: theme.text, marginTop: 4 }}>{stat.value}</Text>
+              <Text style={{ fontSize: 10, color: theme.muted, textTransform: 'uppercase', letterSpacing: 1 }}>{stat.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={{ marginBottom: 20 }}>
+          <Text style={[styles.homeHeroText, { color: theme.muted, fontSize: 15, lineHeight: 22 }]}>
+            Welcome back, <Text style={{ color: theme.primary, fontWeight: '700' }}>{user?.name || 'Eco Warrior'}</Text>. 
+            Your sustainable journey continues. Drop off your e-waste at authorized hubs and track your environmental impact in real-time.
+          </Text>
+        </View>
+
+        <Pressable 
+          style={[styles.primaryButton, { height: 60, justifyContent: 'center', shadowColor: theme.primary, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8, marginBottom: 24 }]} 
+          onPress={() => navigation.getParent()?.navigate('SelectEWaste')}
+        >
+          <LinearGradient
+            colors={[theme.primary, theme.primaryDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 12 }}
+          />
+          <Text style={[styles.primaryButtonText, { fontSize: 18, fontWeight: '800' }]}>Drop-off E-Waste</Text>
+        </Pressable>
+
+          <View style={[styles.homeFeatureList, { marginTop: 10 }]}>
             {featureCards.map((feature) => (
-              <View key={feature.title} style={[styles.homeFeatureCard, styles.glassCardCompact, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-                <View style={styles.homeFeatureIcon}>
-                  <MaterialCommunityIcons name={feature.icon} size={22} color={theme.primary} />
+              <View key={feature.title} style={[styles.homeFeatureCard, styles.glassCardCompact, { marginBottom: 12, padding: 16, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#FFFFFF' }]}>
+                <View style={[styles.homeFeatureIcon, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F0FAF5' }]}>
+                  <MaterialCommunityIcons name={feature.icon} size={24} color={theme.primary} />
                 </View>
                 <View style={styles.homeFeatureCopy}>
-                  <Text style={[styles.homeFeatureTitle, { color: theme.text }]}>{feature.title}</Text>
-                  <Text style={[styles.homeFeatureText, { color: theme.muted }]}>{feature.text}</Text>
+                  <Text style={[styles.homeFeatureTitle, { color: theme.text, fontSize: 16 }]}>{feature.title}</Text>
+                  <Text style={[styles.homeFeatureText, { color: theme.muted, fontSize: 13 }]}>{feature.text}</Text>
                 </View>
               </View>
             ))}
           </View>
-        </View>
 
         {latestPickup ? (
           <Pressable
-            style={[styles.trackingHeroCard, styles.glassCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}
+            style={[styles.trackingHeroCard, styles.glassCard, { marginTop: 0, marginBottom: 20, backgroundColor: isDarkMode ? 'rgba(20, 80, 70, 0.3)' : '#F0FAF5', borderLeftWidth: 4, borderLeftColor: theme.primary }]}
             onPress={() => navigation.getParent()?.navigate('TrackPickup', { pickupId: latestPickup.id })}
           >
-            <View style={styles.trackingHeroHeader}>
-              <View>
-                <Text style={[styles.trackingHeroLabel, { color: theme.muted }]}>Current Pickup</Text>
-                <Text style={[styles.trackingHeroTitle, { color: theme.text }]}>{tracking.currentStep.title}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center' }}>
+                  <MaterialCommunityIcons name="radar" size={18} color="#FFF" />
+                </View>
+                <Text style={{ fontWeight: '800', color: theme.text, fontSize: 16 }}>Live Tracking</Text>
               </View>
-              <View style={[styles.statusPill, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                <Text style={[styles.statusPillText, isDarkMode && { color: theme.text }]}>
-                  Step {tracking.activeStep + 1}/{TRACKING_STEPS.length}
+              <View style={[styles.statusPill, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+                <Text style={[styles.statusPillText, { color: theme.primary }]}>
+                  {tracking.currentStep.title}
                 </Text>
               </View>
             </View>
-            <Text style={[styles.trackingHeroMeta, { color: theme.muted }]}>
-              {latestPickup.pickupDetails?.date || '-'} at {latestPickup.pickupDetails?.time || '-'}
-            </Text>
-            <Text style={[styles.trackingHeroMeta, { color: theme.muted }]}>{tracking.etaText}</Text>
-            <Text style={[styles.trackingHeroLink, { color: theme.accent }]}>View live pickup progress</Text>
+            
+            <View style={{ gap: 4, marginBottom: 14 }}>
+              <Text style={{ color: theme.muted, fontSize: 13 }}>Scheduled for: {latestPickup.pickupDetails?.date || '-'}</Text>
+              <Text style={{ color: theme.text, fontWeight: '600' }}>{tracking.etaText}</Text>
+            </View>
+
+            <View style={{ height: 4, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 2, overflow: 'hidden' }}>
+              <View style={{ width: `${((tracking.activeStep + 1) / TRACKING_STEPS.length) * 100}%`, height: '100%', backgroundColor: theme.primary }} />
+            </View>
           </Pressable>
         ) : null}
 
-        <Pressable 
-          style={[styles.primaryButton, isDarkMode && { backgroundColor: theme.primary }]} 
-          onPress={() => navigation.getParent()?.navigate('SelectEWaste')}
-        >
-          <Text style={styles.primaryButtonText}>Schedule Pickup</Text>
-        </Pressable>
-        {latestPickup ? (
-          <Pressable
-            style={[styles.secondaryButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}
-            onPress={() => navigation.getParent()?.navigate('TrackPickup', { pickupId: latestPickup.id })}
-          >
-            <Text style={[styles.secondaryButtonText, isDarkMode && { color: theme.text }]}>Track Current Pickup</Text>
-          </Pressable>
-        ) : null}
-        <Pressable 
-          style={[styles.secondaryButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]} 
-          onPress={() => navigation.navigate('Shop')}
-        >
-          <Text style={[styles.secondaryButtonText, isDarkMode && { color: theme.text }]}>Rewards Shop</Text>
-        </Pressable>
-        <Pressable 
-          style={[styles.secondaryButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]} 
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Text style={[styles.secondaryButtonText, isDarkMode && { color: theme.text }]}>Pickup History</Text>
-        </Pressable>
-        <Pressable 
-          style={[styles.secondaryButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]} 
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Text style={[styles.secondaryButtonText, isDarkMode && { color: theme.text }]}>Profile</Text>
-        </Pressable>
       </ScrollView>
     </ScreenShell>
   );
@@ -1565,53 +1580,61 @@ function SchedulePickupScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader title="Schedule Drop-off" subtitle="Pick a date and an authorized drop-off location." />
 
-        <Text style={[styles.label, { color: theme.text }]}>Drop-off Date</Text>
-        <Pressable style={[styles.pickerField, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', borderColor: 'rgba(255,255,255,0.2)' }]} onPress={() => setActivePicker('date')}>
-          <MaterialCommunityIcons name="calendar-outline" size={20} color={theme.primary} />
-          <Text style={[pickupDate ? styles.pickerValue : styles.pickerPlaceholder, pickupDate && isDarkMode && { color: theme.text }]}>
-            {pickupDate || 'Choose date'}
-          </Text>
+        <View style={[styles.glassCard, { padding: 18, marginTop: 10, backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.5)' }]}>
+          <Text style={[styles.label, { color: theme.text, marginTop: 0 }]}>Drop-off Date</Text>
+          <Pressable style={[styles.pickerField, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', borderColor: 'rgba(255,255,255,0.1)' }]} onPress={() => setActivePicker('date')}>
+            <MaterialCommunityIcons name="calendar-outline" size={20} color={theme.primary} />
+            <Text style={[pickupDate ? styles.pickerValue : styles.pickerPlaceholder, pickupDate && isDarkMode && { color: theme.text }]}>
+              {pickupDate || 'Choose date'}
+            </Text>
+          </Pressable>
+
+          <Text style={[styles.label, { color: theme.text }]}>Drop-off Location</Text>
+          <Pressable style={[styles.pickerField, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', borderColor: 'rgba(255,255,255,0.1)' }]} onPress={() => setActivePicker('address')}>
+            <MaterialCommunityIcons name="map-marker-check-outline" size={20} color={theme.primary} />
+            <Text style={[address ? styles.pickerValue : styles.pickerPlaceholder, address && isDarkMode && { color: theme.text }]} numberOfLines={1}>
+              {address || 'Choose a recycler drop-off point'}
+            </Text>
+          </Pressable>
+
+          <Text style={[styles.label, { color: theme.text }]}>Phone Number</Text>
+          <TextInput
+            value={phone}
+            onChangeText={setPhone}
+            style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.1)' }]}
+            placeholder="Mobile number"
+            placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
+            keyboardType="phone-pad"
+          />
+
+          <Text style={[styles.label, { color: theme.text }]}>Notes (optional)</Text>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.1)' }]}
+            placeholder="Gate number, landmark, etc."
+            placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
+            multiline
+          />
+
+          {formError ? (
+            <View style={{ backgroundColor: isDarkMode ? 'rgba(255, 100, 100, 0.1)' : '#FFE8E5', padding: 12, borderRadius: 10, marginBottom: 14 }}>
+              <Text style={{ color: isDarkMode ? '#FF8080' : '#A13A2A', fontSize: 13, fontWeight: '600' }}>{formError}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <Pressable 
+          style={[styles.secondaryButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }, { marginTop: 24 }]} 
+          onPress={() => navigation.getParent()?.navigate('SelectEWaste')}
+        >
+          <Text style={[styles.secondaryButtonText, isDarkMode && { color: theme.text }]}>Edit E-Waste Items</Text>
         </Pressable>
 
-        <Text style={[styles.label, { color: theme.text }]}>Drop-off Location</Text>
-        <Pressable style={[styles.pickerField, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', borderColor: 'rgba(255,255,255,0.2)' }]} onPress={() => setActivePicker('address')}>
-          <MaterialCommunityIcons name="map-marker-check-outline" size={20} color={theme.primary} />
-          <Text style={[address ? styles.pickerValue : styles.pickerPlaceholder, address && isDarkMode && { color: theme.text }]} numberOfLines={1}>
-            {address || 'Choose a recycler drop-off point'}
-          </Text>
-        </Pressable>
-
-        <Text style={[styles.label, { color: theme.text }]}>Phone Number</Text>
-        <TextInput
-          value={phone}
-          onChangeText={setPhone}
-          style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]}
-          placeholder="Mobile number"
-          placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
-          keyboardType="phone-pad"
-        />
-
-        <Text style={[styles.label, { color: theme.text }]}>Notes (optional)</Text>
-        <TextInput
-          value={notes}
-          onChangeText={setNotes}
-          style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]}
-          placeholder="Gate number, landmark, etc."
-          placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
-          multiline
-        />
-
-        {formError ? (
-          <View style={{ backgroundColor: '#FFE8E5', padding: 12, borderRadius: 10, marginBottom: 14 }}>
-            <Text style={{ color: '#A13A2A', fontSize: 13, fontWeight: '600' }}>{formError}</Text>
-          </View>
-        ) : null}
-
-        <Pressable style={styles.secondaryButton} onPress={() => navigation.getParent()?.navigate('SelectEWaste')}>
-          <Text style={styles.secondaryButtonText}>Edit E-Waste Items</Text>
-        </Pressable>
-
-        <Pressable style={styles.primaryButton} onPress={onReview}>
+        <Pressable 
+          style={[styles.primaryButton, { shadowColor: theme.primary, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 }]} 
+          onPress={onReview}
+        >
           <Text style={styles.primaryButtonText}>Review Order</Text>
         </Pressable>
 
@@ -2878,8 +2901,8 @@ function MainTabs() {
         tabBarStyle: {
           position: 'absolute',
           bottom: 14,
-          left: 700,
-          right: 700,
+          left: 40,
+          right: 40,
           borderRadius: 28,
           height: 68,
           backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.65)',
@@ -3043,8 +3066,8 @@ export default function App() {
           <Stack.Navigator screenOptions={{ headerTransparent: true }}>
             <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
             <Stack.Screen name="OtpVerification" component={OtpVerificationScreen} options={{ headerShown: false }} />
             <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
             <Stack.Screen 
@@ -3460,13 +3483,13 @@ const styles = StyleSheet.create({
     lineHeight: 20
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
-    borderColor: '#D5E7DF',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#11322A',
+    color: '#FFFFFF',
     fontSize: 15
   },
   pickerField: {

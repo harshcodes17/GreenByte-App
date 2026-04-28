@@ -21,6 +21,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { firebase, firebaseAuth, firebaseConfig } from './firebaseClient';
 
+import { BlurView } from 'expo-blur';
+import { BackgroundShapes } from './src/components/BackgroundShapes';
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -33,6 +36,17 @@ const THEME = {
   text: '#11322A',
   muted: '#6A837B',
   border: '#D5E7DF'
+};
+
+const DARK_THEME = {
+  bg: '#0B2E26',
+  primary: '#20C997',
+  primaryDark: '#128C7E',
+  accent: '#F9D680',
+  card: 'rgba(20, 50, 40, 0.7)',
+  text: '#F4FBF8',
+  muted: '#A7C4BA',
+  border: 'rgba(255, 255, 255, 0.1)'
 };
 
 const PRICE_CATALOG = {
@@ -82,6 +96,10 @@ const ROLE_OPTIONS = [
 // Replace localhost with your machine LAN IP when testing on a physical device.
 const API_BASE_URL = 'http://localhost:4000/api/v1';
 const DEFAULT_COUNTRY_CODE = '91';
+function useTheme() {
+  const { isDarkMode } = useContext(AppContext);
+  return isDarkMode ? DARK_THEME : THEME;
+}
 
 const AppContext = createContext(null);
 const ToastContext = createContext(null);
@@ -458,46 +476,97 @@ async function apiRequest(path, options = {}) {
 }
 
 function ScreenShell({ children }) {
+  const { isDarkMode } = useApp();
+  const bgColors = isDarkMode ? ['#051F1A', '#0B2E26'] : ['#EFFAF4', '#F8FDFA'];
+
   return (
-    <LinearGradient colors={['#EFFAF4', '#F8FDFA']} style={styles.shell}>
-      <StatusBar style="dark" />
+    <LinearGradient colors={bgColors} style={[styles.shell, isDarkMode && { backgroundColor: '#0B2E26' }]}>
+      <BackgroundShapes isDarkMode={isDarkMode} />
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
       {children}
     </LinearGradient>
   );
 }
 
 function ToastBanner({ toast, onDismiss }) {
+  const { isDarkMode } = useApp() || { isDarkMode: false };
   if (!toast) return null;
   const isError = toast.type === 'error';
-  const bgColor = isError ? '#FFE8E5' : '#E8F6EF';
-  const borderColor = isError ? '#F5A9A0' : '#A3D9C0';
-  const textColor = isError ? '#A13A2A' : '#0B6B4B';
+  
+  let borderColor = isError ? '#F5A9A0' : '#A3D9C0';
+  let textColor = isError ? '#A13A2A' : '#0B6B4B';
+
+  if (isDarkMode) {
+    borderColor = isError ? '#4D241E' : '#124D3E';
+    textColor = isError ? '#FF9B8C' : '#20C997';
+  }
+
   const icon = isError ? 'alert-circle-outline' : 'check-circle-outline';
 
   return (
-    <Pressable
-      onPress={onDismiss}
-      style={{
-        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9999,
-        padding: 16, paddingTop: 48,
-        backgroundColor: bgColor, borderBottomWidth: 2, borderBottomColor: borderColor,
-        flexDirection: 'row', alignItems: 'center', gap: 10,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1, shadowRadius: 8, elevation: 8
-      }}
-    >
-      <MaterialCommunityIcons name={icon} size={22} color={textColor} />
-      <Text style={{ color: textColor, fontSize: 14, fontWeight: '600', flex: 1 }}>{toast.message}</Text>
-      <MaterialCommunityIcons name="close" size={18} color={textColor} />
-    </Pressable>
+    <View style={{ position: 'absolute', top: 50, left: 0, right: 0, zIndex: 9999, alignItems: 'center', paddingHorizontal: 20 }}>
+      <BlurView
+        intensity={isDarkMode ? 40 : 60}
+        tint={isDarkMode ? 'dark' : 'default'}
+        style={{
+          width: '100%',
+          maxWidth: 400,
+          borderRadius: 20,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: borderColor,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.2,
+          shadowRadius: 12,
+          elevation: 10
+        }}
+      >
+        <Pressable
+          onPress={onDismiss}
+          style={{
+            padding: 16,
+            backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.6)',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', alignItems: 'center', justifyContent: 'center' }}>
+            <MaterialCommunityIcons name={icon} size={20} color={textColor} />
+          </View>
+          <Text style={{ color: textColor, fontSize: 14, fontWeight: '700', flex: 1 }}>{toast.message}</Text>
+          <MaterialCommunityIcons name="close" size={18} color={textColor} style={{ opacity: 0.6 }} />
+        </Pressable>
+      </BlurView>
+    </View>
   );
 }
 
 function ScreenHeader({ title, subtitle, centered = false, compact = false }) {
+  const { isDarkMode, toggleDarkMode } = useApp();
+  const theme = useTheme();
+
   return (
     <View style={[styles.screenHeader, centered && styles.screenHeaderCentered, compact && styles.screenHeaderCompact]}>
-      <Text style={[styles.sectionTitle, centered && styles.sectionTitleCentered]}>{title}</Text>
-      {subtitle ? <Text style={[styles.sectionSubtitle, centered && styles.sectionSubtitleCentered]}>{subtitle}</Text> : null}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: centered ? 'center' : 'space-between', width: '100%' }}>
+        <Text style={[styles.sectionTitle, centered && styles.sectionTitleCentered, { color: theme.text }]}>{title}</Text>
+        <Pressable 
+          onPress={toggleDarkMode}
+          style={({ pressed }) => ({
+            padding: 8,
+            borderRadius: 20,
+            backgroundColor: pressed ? 'rgba(0,0,0,0.05)' : 'transparent',
+          })}
+        >
+          <MaterialCommunityIcons 
+            name={isDarkMode ? 'weather-sunny' : 'weather-night'} 
+            size={24} 
+            color={theme.primary} 
+          />
+        </Pressable>
+      </View>
+      {subtitle ? <Text style={[styles.sectionSubtitle, centered && styles.sectionSubtitleCentered, { color: theme.muted }]}>{subtitle}</Text> : null}
     </View>
   );
 }
@@ -602,7 +671,8 @@ function OnboardingScreen({ navigation }) {
   return (
     <ScreenShell>
       <View style={styles.container}>
-        <View style={styles.heroCard}>
+        <View style={[styles.heroCard, styles.glassCard]}>
+
           <MaterialCommunityIcons name="leaf-circle" size={72} color={THEME.primary} />
           <Text style={styles.heroTitle}>{current.title}</Text>
           <Text style={styles.heroText}>{current.text}</Text>
@@ -631,6 +701,8 @@ function OnboardingScreen({ navigation }) {
 
 function RegisterScreen({ navigation }) {
   const showToast = useToast();
+  const { isDarkMode } = useApp();
+  const theme = useTheme();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -683,7 +755,8 @@ function RegisterScreen({ navigation }) {
   return (
     <ScreenShell>
       <View style={styles.containerFlex}>
-        <View style={styles.authCard}>
+        <View style={[styles.authCard, styles.glassCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+
           <ScreenHeader
             title="Register"
             subtitle="Create your GreenByte account"
@@ -691,39 +764,47 @@ function RegisterScreen({ navigation }) {
             compact
           />
 
-          <Text style={styles.label}>Role</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Role</Text>
           <View style={styles.roleSelectorRow}>
             {ROLE_OPTIONS.map((option) => (
               <Pressable
                 key={option.value}
-                style={[styles.roleChip, role === option.value && styles.roleChipActive]}
+                style={[
+                  styles.roleChip, 
+                  role === option.value && styles.roleChipActive,
+                  isDarkMode && role !== option.value && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }
+                ]}
                 onPress={() => setRole(option.value)}
               >
-                <Text style={[styles.roleChipText, role === option.value && styles.roleChipTextActive]}>
+                <Text style={[
+                  styles.roleChipText, 
+                  role === option.value && styles.roleChipTextActive,
+                  isDarkMode && role !== option.value && { color: theme.muted }
+                ]}>
                   {option.label}
                 </Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={styles.label}>Full Name</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Full Name</Text>
           <TextInput
             value={name}
             onChangeText={setName}
-            style={styles.input}
-            placeholder="Your full name"
-            placeholderTextColor="#91A79F"
+            style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]}
+            placeholder="John Doe"
+            placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
           />
 
           {role !== 'customer' ? (
             <>
-              <Text style={styles.label}>{role === 'recycler' ? 'Company Name' : 'Organization'}</Text>
+              <Text style={[styles.label, { color: theme.text }]}>{role === 'recycler' ? 'Company Name' : 'Organization'}</Text>
               <TextInput
                 value={organizationName}
                 onChangeText={setOrganizationName}
-                style={styles.input}
+                style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]}
                 placeholder={role === 'recycler' ? 'Recycler company name' : 'Admin organization'}
-                placeholderTextColor="#91A79F"
+                placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
               />
             </>
           ) : null}
@@ -776,12 +857,14 @@ function LoginScreen({ navigation, route }) {
   const showToast = useToast();
   const prefilledPhone = route.params?.phone || '';
   const prefilledRole = route.params?.role || 'customer';
+  const { setUser, setPickupHistory, isDarkMode } = useApp();
+  const theme = useTheme();
+
   const [phone, setPhone] = useState(prefilledPhone);
   const [password, setPassword] = useState('');
   const [role, setRole] = useState(prefilledRole);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const { setUser, setPickupHistory } = useApp();
 
   const onContinue = async () => {
     setErrorMessage('');
@@ -820,7 +903,8 @@ function LoginScreen({ navigation, route }) {
   return (
     <ScreenShell>
       <View style={styles.containerFlex}>
-        <View style={styles.authCard}>
+        <View style={[styles.authCard, styles.glassCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+
           <ScreenHeader
             title="Login"
             subtitle="Enter your phone number and password"
@@ -828,45 +912,53 @@ function LoginScreen({ navigation, route }) {
             compact
           />
 
-          <Text style={styles.label}>Role</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Role</Text>
           <View style={styles.roleSelectorRow}>
             {ROLE_OPTIONS.map((option) => (
               <Pressable
                 key={option.value}
-                style={[styles.roleChip, role === option.value && styles.roleChipActive]}
+                style={[
+                  styles.roleChip, 
+                  role === option.value && styles.roleChipActive,
+                  isDarkMode && role !== option.value && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }
+                ]}
                 onPress={() => setRole(option.value)}
               >
-                <Text style={[styles.roleChipText, role === option.value && styles.roleChipTextActive]}>
+                <Text style={[
+                  styles.roleChipText, 
+                  role === option.value && styles.roleChipTextActive,
+                  isDarkMode && role !== option.value && { color: theme.muted }
+                ]}>
                   {option.label}
                 </Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={styles.label}>Phone Number</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Phone Number</Text>
           <TextInput
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
-            style={styles.input}
+            style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]}
             placeholder="Registered mobile number"
-            placeholderTextColor="#91A79F"
+            placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
             maxLength={15}
           />
 
-          <Text style={styles.label}>Password</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Password</Text>
           <TextInput
             value={password}
             onChangeText={setPassword}
-            style={styles.input}
+            style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]}
             placeholder="Your password"
-            placeholderTextColor="#91A79F"
+            placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
             secureTextEntry
           />
 
           {errorMessage ? (
-            <View style={{ backgroundColor: '#FFE8E5', padding: 12, borderRadius: 10, marginBottom: 14 }}>
-              <Text style={{ color: '#A13A2A', fontSize: 13, fontWeight: '600' }}>{errorMessage}</Text>
+            <View style={{ backgroundColor: isDarkMode ? 'rgba(255, 100, 100, 0.1)' : '#FFE8E5', padding: 12, borderRadius: 10, marginVertical: 14 }}>
+              <Text style={{ color: isDarkMode ? '#FF8080' : '#A13A2A', fontSize: 13, fontWeight: '600' }}>{errorMessage}</Text>
             </View>
           ) : null}
 
@@ -881,7 +973,7 @@ function LoginScreen({ navigation, route }) {
           </Pressable>
 
           <Pressable style={styles.textButton} onPress={() => navigation.replace('Register')}>
-            <Text style={styles.textButtonText}>Need an account? Register first</Text>
+            <Text style={[styles.textButtonText, { color: theme.primary }]}>Need an account? Register first</Text>
           </Pressable>
         </View>
       </View>
@@ -891,6 +983,8 @@ function LoginScreen({ navigation, route }) {
 
 function OtpVerificationScreen({ navigation, route }) {
   const showToast = useToast();
+  const { isDarkMode } = useApp();
+  const theme = useTheme();
   const { setUser, setPickupHistory } = useApp();
   const phone = route.params?.phone || '';
   const role = route.params?.role || 'customer';
@@ -958,7 +1052,7 @@ function OtpVerificationScreen({ navigation, route }) {
   return (
     <ScreenShell>
       <View style={styles.containerFlex}>
-        <View style={styles.authCard}>
+        <View style={[styles.authCard, styles.glassCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
           <ScreenHeader
             title="Verify OTP"
             subtitle={`Enter the OTP sent to ${firebasePhone || phone}`}
@@ -966,13 +1060,25 @@ function OtpVerificationScreen({ navigation, route }) {
             compact
           />
 
+          <Text style={[styles.label, { color: theme.text }]}>Phone Number</Text>
+          <TextInput
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]}
+            placeholder="Your mobile number"
+            placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
+            maxLength={15}
+          />
+
+          <Text style={[styles.label, { color: theme.text }]}>OTP Code</Text>
           <TextInput
             value={otp}
             onChangeText={setOtp}
             keyboardType="number-pad"
-            style={styles.input}
+            style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]}
             placeholder="6-digit OTP"
-            placeholderTextColor="#91A79F"
+            placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
             maxLength={6}
           />
 
@@ -1011,7 +1117,8 @@ function OtpVerificationScreen({ navigation, route }) {
 
 function HomeScreen({ navigation }) {
   const [refreshNow, setRefreshNow] = useState(Date.now());
-  const { pickupHistory, user } = useApp();
+  const { pickupHistory, user, isDarkMode } = useApp();
+  const theme = useTheme();
   const latestPickup = pickupHistory[0];
   const tracking = getPickupTracking(latestPickup, refreshNow);
 
@@ -1043,16 +1150,16 @@ function HomeScreen({ navigation }) {
 
   return (
     <ScreenShell>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.homeHeroCard}>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={[styles.homeHeroCard, styles.glassCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
           <View style={styles.homeHeroBrandRow}>
-            <View style={styles.homeLogoBadge}>
-              <MaterialCommunityIcons name="leaf-circle-outline" size={52} color={THEME.primary} />
+            <View style={[styles.homeLogoBadge, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+              <MaterialCommunityIcons name="leaf-circle-outline" size={52} color={theme.primary} />
             </View>
             <View style={styles.homeHeroCopy}>
               <Text style={styles.homeHeroEyebrow}>GreenByte</Text>
-              <Text style={styles.homeHeroTitle}>Smart e-waste pickup for homes and businesses</Text>
-              <Text style={styles.homeHeroText}>
+              <Text style={[styles.homeHeroTitle, { color: theme.text }]}>Smart e-waste pickup for homes and businesses</Text>
+              <Text style={[styles.homeHeroText, { color: theme.muted }]}>
                 Welcome{user?.name ? `, ${user.name}` : ''}. Schedule pickups, track ongoing requests, and manage
                 everything from one clean dashboard.
               </Text>
@@ -1061,13 +1168,13 @@ function HomeScreen({ navigation }) {
 
           <View style={styles.homeFeatureList}>
             {featureCards.map((feature) => (
-              <View key={feature.title} style={styles.homeFeatureCard}>
+              <View key={feature.title} style={[styles.homeFeatureCard, styles.glassCardCompact, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
                 <View style={styles.homeFeatureIcon}>
-                  <MaterialCommunityIcons name={feature.icon} size={22} color={THEME.primary} />
+                  <MaterialCommunityIcons name={feature.icon} size={22} color={theme.primary} />
                 </View>
                 <View style={styles.homeFeatureCopy}>
-                  <Text style={styles.homeFeatureTitle}>{feature.title}</Text>
-                  <Text style={styles.homeFeatureText}>{feature.text}</Text>
+                  <Text style={[styles.homeFeatureTitle, { color: theme.text }]}>{feature.title}</Text>
+                  <Text style={[styles.homeFeatureText, { color: theme.muted }]}>{feature.text}</Text>
                 </View>
               </View>
             ))}
@@ -1076,47 +1183,59 @@ function HomeScreen({ navigation }) {
 
         {latestPickup ? (
           <Pressable
-            style={styles.trackingHeroCard}
+            style={[styles.trackingHeroCard, styles.glassCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}
             onPress={() => navigation.getParent()?.navigate('TrackPickup', { pickupId: latestPickup.id })}
           >
             <View style={styles.trackingHeroHeader}>
               <View>
-                <Text style={styles.trackingHeroLabel}>Current Pickup</Text>
-                <Text style={styles.trackingHeroTitle}>{tracking.currentStep.title}</Text>
+                <Text style={[styles.trackingHeroLabel, { color: theme.muted }]}>Current Pickup</Text>
+                <Text style={[styles.trackingHeroTitle, { color: theme.text }]}>{tracking.currentStep.title}</Text>
               </View>
-              <View style={styles.statusPill}>
-                <Text style={styles.statusPillText}>
+              <View style={[styles.statusPill, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                <Text style={[styles.statusPillText, isDarkMode && { color: theme.text }]}>
                   Step {tracking.activeStep + 1}/{TRACKING_STEPS.length}
                 </Text>
               </View>
             </View>
-            <Text style={styles.trackingHeroMeta}>
+            <Text style={[styles.trackingHeroMeta, { color: theme.muted }]}>
               {latestPickup.pickupDetails?.date || '-'} at {latestPickup.pickupDetails?.time || '-'}
             </Text>
-            <Text style={styles.trackingHeroMeta}>{tracking.etaText}</Text>
-            <Text style={styles.trackingHeroLink}>View live pickup progress</Text>
+            <Text style={[styles.trackingHeroMeta, { color: theme.muted }]}>{tracking.etaText}</Text>
+            <Text style={[styles.trackingHeroLink, { color: theme.accent }]}>View live pickup progress</Text>
           </Pressable>
         ) : null}
 
-        <Pressable style={styles.primaryButton} onPress={() => navigation.getParent()?.navigate('SelectEWaste')}>
+        <Pressable 
+          style={[styles.primaryButton, isDarkMode && { backgroundColor: theme.primary }]} 
+          onPress={() => navigation.getParent()?.navigate('SelectEWaste')}
+        >
           <Text style={styles.primaryButtonText}>Schedule Pickup</Text>
         </Pressable>
         {latestPickup ? (
           <Pressable
-            style={styles.secondaryButton}
+            style={[styles.secondaryButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}
             onPress={() => navigation.getParent()?.navigate('TrackPickup', { pickupId: latestPickup.id })}
           >
-            <Text style={styles.secondaryButtonText}>Track Current Pickup</Text>
+            <Text style={[styles.secondaryButtonText, isDarkMode && { color: theme.text }]}>Track Current Pickup</Text>
           </Pressable>
         ) : null}
-        <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('Shop')}>
-          <Text style={styles.secondaryButtonText}>Rewards Shop</Text>
+        <Pressable 
+          style={[styles.secondaryButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]} 
+          onPress={() => navigation.navigate('Shop')}
+        >
+          <Text style={[styles.secondaryButtonText, isDarkMode && { color: theme.text }]}>Rewards Shop</Text>
         </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('Profile')}>
-          <Text style={styles.secondaryButtonText}>Pickup History</Text>
+        <Pressable 
+          style={[styles.secondaryButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]} 
+          onPress={() => navigation.navigate('Profile')}
+        >
+          <Text style={[styles.secondaryButtonText, isDarkMode && { color: theme.text }]}>Pickup History</Text>
         </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('Profile')}>
-          <Text style={styles.secondaryButtonText}>Profile</Text>
+        <Pressable 
+          style={[styles.secondaryButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]} 
+          onPress={() => navigation.navigate('Profile')}
+        >
+          <Text style={[styles.secondaryButtonText, isDarkMode && { color: theme.text }]}>Profile</Text>
         </Pressable>
       </ScrollView>
     </ScreenShell>
@@ -1124,7 +1243,8 @@ function HomeScreen({ navigation }) {
 }
 
 function SelectEWasteScreen({ navigation }) {
-  const { selectedItems, setSelectedItems } = useApp();
+  const { selectedItems, setSelectedItems, isDarkMode } = useApp();
+  const theme = useTheme();
   const categories = Object.keys(PRICE_CATALOG);
 
   const [category, setCategory] = useState(categories[0]);
@@ -1228,48 +1348,60 @@ function SelectEWasteScreen({ navigation }) {
 
   return (
     <ScreenShell>
-      <ScrollView contentContainerStyle={styles.container}>
-        <ScreenHeader
-          title="Select E-Waste"
-          subtitle="Add, edit, or remove items before pickup."
-        />
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: 100 }]}>
 
-        <Text style={styles.label}>Category</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Category</Text>
         <View style={styles.chipsRow}>
           {categories.map((c) => (
             <Pressable
               key={c}
-              style={[styles.chip, category === c && styles.chipActive]}
+              style={[
+                styles.chip, 
+                category === c && styles.chipActive,
+                isDarkMode && category !== c && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }
+              ]}
               onPress={() => onCategoryChange(c)}
             >
-              <Text style={[styles.chipText, category === c && styles.chipTextActive]}>{c}</Text>
+              <Text style={[
+                styles.chipText, 
+                category === c && styles.chipTextActive,
+                isDarkMode && category !== c && { color: theme.muted }
+              ]}>{c}</Text>
             </Pressable>
           ))}
         </View>
 
-        <Text style={styles.label}>Item</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Item</Text>
         <View style={styles.chipsRow}>
           {itemOptions.map((it) => (
             <Pressable
               key={it.name}
-              style={[styles.chip, itemName === it.name && styles.chipActive]}
+              style={[
+                styles.chip, 
+                itemName === it.name && styles.chipActive,
+                isDarkMode && itemName !== it.name && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }
+              ]}
               onPress={() => setItemName(it.name)}
             >
-              <Text style={[styles.chipText, itemName === it.name && styles.chipTextActive]}>
+              <Text style={[
+                styles.chipText, 
+                itemName === it.name && styles.chipTextActive,
+                isDarkMode && itemName !== it.name && { color: theme.muted }
+              ]}>
                 {it.name} ({it.price}/{it.unit})
               </Text>
             </Pressable>
           ))}
         </View>
 
-        <Text style={styles.label}>Quantity</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Quantity</Text>
         <TextInput
           value={quantity}
           onChangeText={setQuantity}
           keyboardType="number-pad"
-          style={styles.input}
+          style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0,0,0,0.3)', color: theme.text, borderColor: 'rgba(255,255,255,0.1)' }]}
           placeholder="e.g. 2"
-          placeholderTextColor="#91A79F"
+          placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.3)' : '#91A79F'}
         />
 
         {selectedMeta.unit === 'kg' && (
@@ -1286,7 +1418,7 @@ function SelectEWasteScreen({ navigation }) {
           </>
         )}
 
-        <Text style={styles.label}>Condition</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Condition</Text>
         <View style={styles.chipsRow}>
           {['working', 'partially_working', 'non_working'].map((c) => (
             <Pressable
@@ -1301,23 +1433,23 @@ function SelectEWasteScreen({ navigation }) {
           ))}
         </View>
 
-        <Text style={styles.label}>Year of Manufacturing (optional)</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Year of Manufacturing (optional)</Text>
         <TextInput
           value={yearOfManufacturing}
           onChangeText={setYearOfManufacturing}
           keyboardType="number-pad"
-          style={styles.input}
+          style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0,0,0,0.3)', color: theme.text, borderColor: 'rgba(255,255,255,0.1)' }]}
           placeholder="e.g. 2018"
-          placeholderTextColor="#91A79F"
+          placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.3)' : '#91A79F'}
           maxLength={4}
         />
 
-        <Text style={styles.label}>Photo (optional)</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Photo (optional)</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
-          <Pressable style={styles.secondaryMiniButton} onPress={pickImage}>
-            <Text style={styles.secondaryMiniButtonText}>Pick Image</Text>
+          <Pressable style={[styles.secondaryMiniButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' }]} onPress={pickImage}>
+            <Text style={[styles.secondaryMiniButtonText, isDarkMode && { color: theme.text }]}>Pick Image</Text>
           </Pressable>
-          {photoUri ? <Text style={{ color: THEME.primaryDark, fontSize: 12 }}>Image selected</Text> : null}
+          {photoUri ? <Text style={{ color: theme.primary, fontSize: 12 }}>Image selected</Text> : null}
         </View>
 
         {formError ? (
@@ -1330,8 +1462,8 @@ function SelectEWasteScreen({ navigation }) {
           <Text style={styles.primaryButtonText}>{editingId ? 'Update Item' : 'Add Item'}</Text>
         </Pressable>
 
-        <View style={styles.listCard}>
-          <Text style={styles.cardTitle}>Selected Items</Text>
+        <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Selected Items</Text>
           {selectedItems.length === 0 ? (
             <Text style={styles.emptyText}>No items added yet.</Text>
           ) : (
@@ -1340,19 +1472,19 @@ function SelectEWasteScreen({ navigation }) {
               return (
                 <View key={item.id} style={styles.itemRow}>
                   <View style={styles.itemMain}>
-                    <Text style={styles.itemTitle}>
+                    <Text style={[styles.itemTitle, { color: theme.text }]}>
                       {item.name} x {item.quantity}
                     </Text>
-                    <Text style={styles.itemMeta}>
-                      {item.unit === 'kg' ? `${item.weightKg} kg each` : `${item.price}/pc`} | Est. {estimate}
+                    <Text style={[styles.itemMeta, { color: theme.muted }]}>
+                      {item.unit === 'kg' ? `${item.weightKg} kg each` : `${item.price}/pc`} | Est. ₹{estimate}
                     </Text>
                   </View>
                   <View style={styles.itemActions}>
-                    <Pressable style={styles.miniButton} onPress={() => onEdit(item)}>
-                      <Text style={styles.miniButtonText}>Edit</Text>
+                    <Pressable style={[styles.miniButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.08)' }]} onPress={() => onEdit(item)}>
+                      <Text style={[styles.miniButtonText, isDarkMode && { color: theme.primary }]}>Edit</Text>
                     </Pressable>
-                    <Pressable style={[styles.miniButton, styles.removeBtn]} onPress={() => onRemove(item.id)}>
-                      <Text style={styles.removeText}>Remove</Text>
+                    <Pressable style={[styles.miniButton, styles.removeBtn, isDarkMode && { backgroundColor: 'rgba(255, 82, 82, 0.15)' }]} onPress={() => onRemove(item.id)}>
+                      <Text style={[styles.removeText, isDarkMode && { color: '#FFB4A9' }]}>Remove</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -1361,8 +1493,8 @@ function SelectEWasteScreen({ navigation }) {
           )}
         </View>
 
-        <View style={styles.totalCard}>
-          <Text style={styles.totalText}>Estimated Value: {total}</Text>
+        <View style={[styles.totalCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.totalText, isDarkMode && { color: theme.primary }]}>Estimated Value: {total}</Text>
         </View>
 
         <Pressable
@@ -1377,7 +1509,8 @@ function SelectEWasteScreen({ navigation }) {
 }
 
 function SchedulePickupScreen({ navigation }) {
-  const { user, selectedItems, pickupDetails, setPickupDetails } = useApp();
+  const { user, selectedItems, pickupDetails, setPickupDetails, isDarkMode } = useApp();
+  const theme = useTheme();
   const [pickupDate, setPickupDate] = useState(pickupDetails.date || '');
   const [address, setAddress] = useState(pickupDetails.address || ''); // Stores the selected drop-off point
   const [phone, setPhone] = useState(pickupDetails.phone || user?.phone || '');
@@ -1432,39 +1565,39 @@ function SchedulePickupScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader title="Schedule Drop-off" subtitle="Pick a date and an authorized drop-off location." />
 
-        <Text style={styles.label}>Drop-off Date</Text>
-        <Pressable style={styles.pickerField} onPress={() => setActivePicker('date')}>
-          <MaterialCommunityIcons name="calendar-outline" size={20} color={THEME.primary} />
-          <Text style={pickupDate ? styles.pickerValue : styles.pickerPlaceholder}>
+        <Text style={[styles.label, { color: theme.text }]}>Drop-off Date</Text>
+        <Pressable style={[styles.pickerField, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', borderColor: 'rgba(255,255,255,0.2)' }]} onPress={() => setActivePicker('date')}>
+          <MaterialCommunityIcons name="calendar-outline" size={20} color={theme.primary} />
+          <Text style={[pickupDate ? styles.pickerValue : styles.pickerPlaceholder, pickupDate && isDarkMode && { color: theme.text }]}>
             {pickupDate || 'Choose date'}
           </Text>
         </Pressable>
 
-        <Text style={styles.label}>Drop-off Location</Text>
-        <Pressable style={styles.pickerField} onPress={() => setActivePicker('address')}>
-          <MaterialCommunityIcons name="map-marker-check-outline" size={20} color={THEME.primary} />
-          <Text style={address ? styles.pickerValue : styles.pickerPlaceholder} numberOfLines={1}>
+        <Text style={[styles.label, { color: theme.text }]}>Drop-off Location</Text>
+        <Pressable style={[styles.pickerField, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', borderColor: 'rgba(255,255,255,0.2)' }]} onPress={() => setActivePicker('address')}>
+          <MaterialCommunityIcons name="map-marker-check-outline" size={20} color={theme.primary} />
+          <Text style={[address ? styles.pickerValue : styles.pickerPlaceholder, address && isDarkMode && { color: theme.text }]} numberOfLines={1}>
             {address || 'Choose a recycler drop-off point'}
           </Text>
         </Pressable>
 
-        <Text style={styles.label}>Phone Number</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Phone Number</Text>
         <TextInput
           value={phone}
           onChangeText={setPhone}
-          style={styles.input}
+          style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]}
           placeholder="Mobile number"
-          placeholderTextColor="#91A79F"
+          placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
           keyboardType="phone-pad"
         />
 
-        <Text style={styles.label}>Notes (optional)</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Notes (optional)</Text>
         <TextInput
           value={notes}
           onChangeText={setNotes}
-          style={styles.input}
+          style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]}
           placeholder="Gate number, landmark, etc."
-          placeholderTextColor="#91A79F"
+          placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
           multiline
         />
 
@@ -1616,11 +1749,10 @@ function OrderSummaryScreen({ navigation }) {
 
   return (
     <ScreenShell>
-      <ScrollView contentContainerStyle={styles.container}>
-        <ScreenHeader title="Order Summary" subtitle="Review everything before confirming." />
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: 100 }]}>
 
-        <View style={styles.listCard}>
-          <Text style={styles.cardTitle}>Selected Items</Text>
+        <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Selected Items</Text>
           {selectedItems.map((item) => (
             <View key={item.id} style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>
@@ -1637,15 +1769,15 @@ function OrderSummaryScreen({ navigation }) {
         </View>
 
         {isEstimating ? (
-          <View style={[styles.listCard, { alignItems: 'center', padding: 24, backgroundColor: '#F0F7F4' }]}>
-            <ActivityIndicator size="small" color={THEME.primary} />
-            <Text style={{ marginTop: 12, color: THEME.primary, fontWeight: '600' }}>Calculating AI Valuation...</Text>
+          <View style={[styles.listCard, { alignItems: 'center', padding: 24, backgroundColor: isDarkMode ? 'rgba(20, 80, 70, 0.2)' : '#F0F7F4' }]}>
+            <ActivityIndicator size="small" color={theme.primary} />
+            <Text style={{ marginTop: 12, color: theme.primary, fontWeight: '600' }}>Calculating AI Valuation...</Text>
           </View>
         ) : aiResult ? (
-          <View style={[styles.listCard, { backgroundColor: '#F0F7F4', borderLeftWidth: 4, borderLeftColor: THEME.primary }]}>
+          <View style={[styles.listCard, { backgroundColor: isDarkMode ? 'rgba(20, 80, 70, 0.2)' : '#F0F7F4', borderLeftWidth: 4, borderLeftColor: theme.primary, borderColor: 'rgba(255,255,255,0.1)' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <MaterialCommunityIcons name="auto-fix" size={20} color={THEME.primary} />
-              <Text style={[styles.cardTitle, { marginBottom: 0, marginLeft: 8 }]}>AI Scrap Estimation</Text>
+              <MaterialCommunityIcons name="auto-fix" size={20} color={theme.primary} />
+              <Text style={[styles.cardTitle, { marginBottom: 0, marginLeft: 8, color: theme.text }]}>AI Scrap Estimation</Text>
             </View>
             
             <View style={styles.summaryRow}>
@@ -1707,6 +1839,8 @@ function OrderSummaryScreen({ navigation }) {
 }
 
 function RewardsShopScreen() {
+  const { isDarkMode } = useApp();
+  const theme = useTheme();
   const rewards = [
     { name: 'Eco Tote Bag', coins: 120 },
     { name: 'Plant a Tree', coins: 200 },
@@ -1718,17 +1852,17 @@ function RewardsShopScreen() {
     <ScreenShell>
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader title="Rewards Shop" subtitle="Redeem rewards with your coins." />
-        <View style={styles.coinsCard}>
-          <Text style={styles.coinCount}>1,240 Coins</Text>
-          <Text style={styles.coinMeta}>Keep scheduling pickups to earn more.</Text>
+        <View style={[styles.coinsCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.coinCount, { color: theme.primary }]}>1,240 Coins</Text>
+          <Text style={[styles.coinMeta, { color: theme.muted }]}>Keep scheduling pickups to earn more.</Text>
         </View>
 
         {rewards.map((item) => (
-          <View key={item.name} style={styles.rewardCard}>
-            <Text style={styles.rewardTitle}>{item.name}</Text>
-            <Text style={styles.rewardCoins}>{item.coins} coins</Text>
-            <Pressable style={styles.miniButton}>
-              <Text style={styles.miniButtonText}>Redeem</Text>
+          <View key={item.name} style={[styles.rewardCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <Text style={[styles.rewardTitle, { color: theme.text }]}>{item.name}</Text>
+            <Text style={[styles.rewardCoins, { color: theme.muted }]}>{item.coins} coins</Text>
+            <Pressable style={[styles.miniButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+              <Text style={[styles.miniButtonText, { color: theme.primary }]}>Redeem</Text>
             </Pressable>
           </View>
         ))}
@@ -1739,7 +1873,8 @@ function RewardsShopScreen() {
 
 function RecyclerOperationsScreen() {
   const showToast = useToast();
-  const { user, setUser, pickupHistory, setPickupHistory } = useApp();
+  const { user, setUser, pickupHistory, setPickupHistory, isDarkMode } = useApp();
+  const theme = useTheme();
   
   React.useEffect(() => {
     const fetchRecyclerQueue = async () => {
@@ -1993,7 +2128,8 @@ function RecyclerAssignedScreen({ navigation }) {
 }
 
 function AdminOverviewScreen({ navigation }) {
-  const { pickupHistory, setPickupHistory } = useApp();
+  const { pickupHistory, setPickupHistory, isDarkMode } = useApp();
+  const theme = useTheme();
 
   React.useEffect(() => {
     const fetchAdmin = async () => {
@@ -2019,44 +2155,44 @@ function AdminOverviewScreen({ navigation }) {
         <ScreenHeader title="Admin Overview" subtitle="Monitor marketplace activity, collection flow, and sustainability outcomes." />
 
         <View style={styles.metricGrid}>
-          <View style={styles.metricCard}>
-            <MaterialCommunityIcons name="clipboard-list-outline" size={24} color={THEME.primary} />
-            <Text style={styles.metricValue}>{pickupHistory.length}</Text>
-            <Text style={styles.metricLabel}>Total requests</Text>
+          <View style={[styles.metricCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <MaterialCommunityIcons name="clipboard-list-outline" size={24} color={theme.primary} />
+            <Text style={[styles.metricValue, { color: theme.text }]}>{pickupHistory.length}</Text>
+            <Text style={[styles.metricLabel, { color: theme.muted }]}>Total requests</Text>
           </View>
-          <View style={styles.metricCard}>
-            <MaterialCommunityIcons name="truck-fast-outline" size={24} color={THEME.primary} />
-            <Text style={styles.metricValue}>{inProgressCount}</Text>
-            <Text style={styles.metricLabel}>In progress</Text>
+          <View style={[styles.metricCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <MaterialCommunityIcons name="truck-fast-outline" size={24} color={theme.primary} />
+            <Text style={[styles.metricValue, { color: theme.text }]}>{inProgressCount}</Text>
+            <Text style={[styles.metricLabel, { color: theme.muted }]}>In progress</Text>
           </View>
-          <View style={styles.metricCard}>
-            <MaterialCommunityIcons name="recycle" size={24} color={THEME.primary} />
-            <Text style={styles.metricValue}>{completedCount}</Text>
-            <Text style={styles.metricLabel}>Completed</Text>
+          <View style={[styles.metricCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <MaterialCommunityIcons name="recycle" size={24} color={theme.primary} />
+            <Text style={[styles.metricValue, { color: theme.text }]}>{completedCount}</Text>
+            <Text style={[styles.metricLabel, { color: theme.muted }]}>Completed</Text>
           </View>
-          <View style={styles.metricCard}>
-            <MaterialCommunityIcons name="currency-inr" size={24} color={THEME.primary} />
-            <Text style={styles.metricValue}>{totalValue}</Text>
-            <Text style={styles.metricLabel}>Quoted value</Text>
+          <View style={[styles.metricCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <MaterialCommunityIcons name="currency-inr" size={24} color={theme.primary} />
+            <Text style={[styles.metricValue, { color: theme.text }]}>{totalValue}</Text>
+            <Text style={[styles.metricLabel, { color: theme.muted }]}>Quoted value</Text>
           </View>
         </View>
 
-        <View style={styles.listCard}>
-          <Text style={styles.cardTitle}>Recent Platform Activity</Text>
+        <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Recent Platform Activity</Text>
           {!pickupHistory.length ? (
-            <Text style={styles.emptyText}>No requests have been created yet.</Text>
+            <Text style={[styles.emptyText, { color: theme.muted }]}>No requests have been created yet.</Text>
           ) : (
             pickupHistory.slice(0, 5).map((request) => {
               const statusMeta = getRequestStatusMeta(request.status);
               return (
                 <Pressable 
                   key={request.id} 
-                  style={styles.adminActivityRow}
+                  style={[styles.adminActivityRow, isDarkMode && { borderBottomColor: 'rgba(255,255,255,0.05)' }]}
                   onPress={() => navigation.getParent()?.navigate('TrackPickup', { pickupId: request.id })}
                 >
                   <View style={styles.adminActivityText}>
-                    <Text style={styles.requestCardTitle}>{request.trackingId || request.id}</Text>
-                    <Text style={styles.requestCardMeta}>
+                    <Text style={[styles.requestCardTitle, { color: theme.text }]}>{request.trackingId || request.id}</Text>
+                    <Text style={[styles.requestCardMeta, { color: theme.muted }]}>
                       {request.requestMode === 'dropoff' ? 'Drop-off' : 'Pickup'} | {request.items.length} items
                     </Text>
                   </View>
@@ -2151,7 +2287,8 @@ function AdminRequestsScreen({ navigation }) {
 function TrackPickupScreen({ navigation, route }) {
   const [refreshNow, setRefreshNow] = useState(Date.now());
   const showToast = useToast();
-  const { user, pickupHistory, setPickupHistory } = useApp();
+  const { user, pickupHistory, setPickupHistory, isDarkMode } = useApp();
+  const theme = useTheme();
   const pickupId = route.params?.pickupId;
   const pickup = pickupId ? pickupHistory.find((entry) => entry.id === pickupId) : pickupHistory[0];
   const tracking = getPickupTracking(pickup, refreshNow);
@@ -2230,12 +2367,12 @@ function TrackPickupScreen({ navigation, route }) {
 
   return (
     <ScreenShell>
-      <ScrollView contentContainerStyle={styles.container}>
-        <ScreenHeader title="Track Pickup" subtitle="Follow the live journey of your e-waste pickup." />
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: 100 }]}>
 
         <View
           style={[
             styles.trackingSummaryCard,
+            isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' },
             tracking.activeStep === -1 && { backgroundColor: '#B3261E', borderColor: '#8C1D18' }
           ]}
         >
@@ -2253,58 +2390,62 @@ function TrackPickupScreen({ navigation, route }) {
           <Text style={styles.trackingEtaValue}>{tracking.etaText}</Text>
 
           <View style={styles.trackingInfoGrid}>
-            <View style={styles.trackingInfoCard}>
-              <Text style={styles.trackingInfoLabel}>Drop-off date</Text>
-              <Text style={styles.trackingInfoValue}>
+            <View style={[styles.trackingInfoCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.05)' }]}>
+              <Text style={[styles.trackingInfoLabel, isDarkMode && { color: theme.muted }]}>Drop-off date</Text>
+              <Text style={[styles.trackingInfoValue, isDarkMode && { color: theme.text }]}>
                 {pickup.pickupDetails?.date || '-'}
               </Text>
             </View>
-            <View style={styles.trackingInfoCard}>
-              <Text style={styles.trackingInfoLabel}>Request mode</Text>
-              <Text style={styles.trackingInfoValue}>Drop-off</Text>
+            <View style={[styles.trackingInfoCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.05)' }]}>
+              <Text style={[styles.trackingInfoLabel, isDarkMode && { color: theme.muted }]}>Request mode</Text>
+              <Text style={[styles.trackingInfoValue, isDarkMode && { color: theme.text }]}>Drop-off</Text>
             </View>
-            <View style={styles.trackingInfoCard}>
-              <Text style={styles.trackingInfoLabel}>Estimated value</Text>
-              <Text style={styles.trackingInfoValue}>
+            <View style={[styles.trackingInfoCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.05)' }]}>
+              <Text style={[styles.trackingInfoLabel, isDarkMode && { color: theme.muted }]}>Estimated value</Text>
+              <Text style={[styles.trackingInfoValue, isDarkMode && { color: theme.text }]}>
                 ₹{pickup.totalEstimate || 0}
               </Text>
             </View>
           </View>
 
-          <View style={styles.trackingAddressCard}>
-            <MaterialCommunityIcons name="map-marker-outline" size={20} color={THEME.primary} />
+          <View style={[styles.trackingAddressCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <MaterialCommunityIcons name="map-marker-outline" size={20} color={theme.primary} />
             <View style={styles.trackingAddressBody}>
-              <Text style={styles.trackingAddressLabel}>Drop-off Location</Text>
-              <Text style={styles.trackingAddressValue}>{pickup.pickupDetails?.address || '-'}</Text>
+              <Text style={[styles.trackingAddressLabel, isDarkMode && { color: theme.muted }]}>Drop-off Location</Text>
+              <Text style={[styles.trackingAddressValue, isDarkMode && { color: theme.text }]}>{pickup.pickupDetails?.address || '-'}</Text>
             </View>
           </View>
 
           {pickup.estimationReasoning ? (
-            <View style={[styles.trackingAddressCard, { marginTop: 12, backgroundColor: '#F0F7F4' }]}>
-              <MaterialCommunityIcons name="auto-fix" size={20} color={THEME.primary} />
+            <View style={[styles.trackingAddressCard, { marginTop: 12, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F0F7F4', borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'transparent' }]}>
+              <MaterialCommunityIcons name="auto-fix" size={20} color={theme.primary} />
               <View style={styles.trackingAddressBody}>
-                <Text style={styles.trackingAddressLabel}>AI Valuation Insight</Text>
-                <Text style={styles.trackingAddressValue}>{pickup.estimationReasoning}</Text>
+                <Text style={[styles.trackingAddressLabel, isDarkMode && { color: theme.muted }]}>AI Valuation Insight</Text>
+                <Text style={[styles.trackingAddressValue, isDarkMode && { color: theme.text, opacity: 0.8 }]}>{pickup.estimationReasoning}</Text>
               </View>
             </View>
           ) : null}
 
           {showPartnerDetails ? (
-            <View style={styles.partnerCard}>
+            <View style={[styles.partnerCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
               <View style={styles.partnerHeader}>
-                <MaterialCommunityIcons name="account-tie-outline" size={20} color={THEME.primary} />
-                <Text style={styles.partnerHeaderText}>Assigned pickup partner</Text>
+                <MaterialCommunityIcons name="account-tie-outline" size={20} color={theme.primary} />
+                <Text style={[styles.partnerHeaderText, isDarkMode && { color: theme.text }]}>Assigned pickup partner</Text>
               </View>
-              <Text style={styles.partnerName}>{assignedPartner.name}</Text>
-              <Text style={styles.partnerPhoneLabel}>Partner mobile number</Text>
-              <Text style={styles.partnerPhoneValue}>{assignedPartner.phone}</Text>
+              <Text style={[styles.partnerName, isDarkMode && { color: theme.text }]}>{assignedPartner.name}</Text>
+              <Text style={[styles.partnerPhoneLabel, isDarkMode && { color: theme.muted }]}>Partner mobile number</Text>
+              <Text style={[styles.partnerPhoneValue, isDarkMode && { color: theme.primary }]}>{assignedPartner.phone}</Text>
             </View>
           ) : null}
         </View>
 
         {pickup.status !== 'cancelled' && pickup.status !== 'rejected' && user?.role !== 'admin' && (
           <Pressable 
-            style={[styles.secondaryButton, { marginTop: 24, borderColor: '#FFB4A9' }]}
+            style={[
+              styles.secondaryButton, 
+              { marginTop: 24, borderColor: '#FFB4A9' },
+              isDarkMode && { backgroundColor: 'rgba(255, 82, 82, 0.05)', borderColor: 'rgba(255, 82, 82, 0.3)' }
+            ]}
             onPress={async () => {
               const confirmed = window.confirm('Are you sure you want to cancel this pickup?');
               if (!confirmed) return;
@@ -2527,8 +2668,8 @@ function TrackPickupScreen({ navigation, route }) {
           </View>
         )}
 
-        <View style={styles.timelineCard}>
-          <Text style={styles.cardTitle}>Progress Timeline</Text>
+        <View style={[styles.timelineCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.cardTitle, isDarkMode && { color: theme.text }]}>Progress Timeline</Text>
           {TRACKING_STEPS.map((step, index) => {
             const isComplete = index < tracking.activeStep;
             const isActive = index === tracking.activeStep;
@@ -2541,30 +2682,38 @@ function TrackPickupScreen({ navigation, route }) {
                     style={[
                       styles.timelineDot,
                       isComplete && styles.timelineDotComplete,
-                      isActive && styles.timelineDotActive
+                      isActive && styles.timelineDotActive,
+                      isDarkMode && !isActive && !isComplete && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }
                     ]}
                   >
                     <MaterialCommunityIcons
                       name={isComplete ? 'check' : step.icon}
                       size={isComplete ? 14 : 16}
-                      color={isComplete || isActive ? '#FFFFFF' : THEME.primary}
+                      color={isComplete || isActive ? '#FFFFFF' : (isDarkMode ? theme.primary : THEME.primary)}
                     />
                   </View>
                   {!isLast ? (
                     <View
                       style={[
                         styles.timelineLine,
-                        index < tracking.activeStep && styles.timelineLineComplete
+                        index < tracking.activeStep && styles.timelineLineComplete,
+                        isDarkMode && index >= tracking.activeStep && { backgroundColor: 'rgba(255,255,255,0.1)' }
                       ]}
                     />
                   ) : null}
                 </View>
 
                 <View style={styles.timelineContent}>
-                  <Text style={[styles.timelineTitle, (isActive || isComplete) && styles.timelineTitleActive]}>
+                  <Text style={[
+                    styles.timelineTitle, 
+                    (isActive || isComplete) && styles.timelineTitleActive,
+                    isDarkMode && !isActive && !isComplete && { color: theme.muted },
+                    isDarkMode && (isActive || isComplete) && { color: theme.primary }
+                  ]}>
                     {step.title}
                   </Text>
-                  <Text style={styles.timelineDescription}>
+                  <Text style={[styles.timelineSubtitle, isDarkMode && { color: theme.muted }]}>{step.subtitle}</Text>
+                  <Text style={[styles.timelineDescription, isDarkMode && { color: theme.text }]}>
                     {step.key === 'onTheWay' ? `${step.description}\nLocation: ${pickup.pickupDetails?.address || '-'}` : step.description}
                   </Text>
                   {isActive ? <Text style={styles.timelineTag}>Current step</Text> : null}
@@ -2574,24 +2723,25 @@ function TrackPickupScreen({ navigation, route }) {
           })}
         </View>
 
-        <View style={styles.listCard}>
-          <Text style={styles.cardTitle}>Pickup Summary</Text>
+        <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.cardTitle, isDarkMode && { color: theme.text }]}>Pickup Summary</Text>
           {pickup.items.map((item) => (
             <View key={item.id} style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>
+              <Text style={[styles.summaryLabel, isDarkMode && { color: theme.muted }]}>
                 {item.name} x {item.quantity}
               </Text>
-              <Text style={styles.summaryValue}>{computeItemEstimate(item)}</Text>
+              <Text style={[styles.summaryValue, isDarkMode && { color: theme.primary }]}>₹{computeItemEstimate(item)}</Text>
             </View>
           ))}
-          <View style={styles.summaryDivider} />
-          <Text style={styles.pickupText}>Booked on: {pickup.createdAt}</Text>
-          <Text style={styles.pickupText}>Phone: {pickup.pickupDetails?.phone || '-'}</Text>
-          {pickup.pickupDetails?.notes ? <Text style={styles.pickupText}>Notes: {pickup.pickupDetails.notes}</Text> : null}
+          <View style={[styles.summaryDivider, isDarkMode && { borderTopColor: 'rgba(255,255,255,0.1)' }]} />
+          <Text style={[styles.pickupText, isDarkMode && { color: theme.muted }]}>Booked on: {pickup.createdAt}</Text>
+          <Text style={[styles.pickupText, isDarkMode && { color: theme.muted }]}>Phone: {pickup.pickupDetails?.phone || '-'}</Text>
+          {pickup.pickupDetails?.notes ? <Text style={[styles.pickupText, isDarkMode && { color: theme.muted }]}>Notes: {pickup.pickupDetails.notes}</Text> : null}
         </View>
 
-        <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('MainTabs', { screen: 'Profile' })}>
-          <Text style={styles.secondaryButtonText}>View Pickup History</Text>
+
+        <Pressable style={[styles.secondaryButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]} onPress={() => navigation.navigate('MainTabs', { screen: 'Profile' })}>
+          <Text style={[styles.secondaryButtonText, isDarkMode && { color: theme.text }]}>View Pickup History</Text>
         </Pressable>
 
         <SelectionPickerModal
@@ -2623,7 +2773,8 @@ function TrackPickupScreen({ navigation, route }) {
 
 function ProfileScreen({ navigation }) {
   const showToast = useToast();
-  const { user, setUser, pickupHistory, setPickupHistory } = useApp();
+  const { user, setUser, pickupHistory, setPickupHistory, isDarkMode } = useApp();
+  const theme = useTheme();
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone);
   const [address, setAddress] = useState(user.address);
@@ -2663,44 +2814,44 @@ function ProfileScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader title="Profile" subtitle="Manage your account and history." />
 
-        <View style={styles.roleBanner}>
-          <Text style={styles.roleBannerLabel}>Logged in as</Text>
-          <Text style={styles.roleBannerValue}>{user.role}</Text>
+        <View style={[styles.roleBanner, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.roleBannerLabel, { color: theme.muted }]}>Logged in as</Text>
+          <Text style={[styles.roleBannerValue, { color: theme.primary }]}>{user.role}</Text>
         </View>
 
-        <Text style={styles.label}>Name</Text>
-        <TextInput value={name} onChangeText={setName} style={styles.input} />
+        <Text style={[styles.label, { color: theme.text }]}>Name</Text>
+        <TextInput value={name} onChangeText={setName} style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]} />
 
-        <Text style={styles.label}>Phone</Text>
-        <TextInput value={phone} onChangeText={setPhone} style={styles.input} keyboardType="phone-pad" />
+        <Text style={[styles.label, { color: theme.text }]}>Phone</Text>
+        <TextInput value={phone} onChangeText={setPhone} style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]} keyboardType="phone-pad" />
 
-        <Text style={styles.label}>Address</Text>
-        <TextInput value={address} onChangeText={setAddress} style={styles.input} multiline />
+        <Text style={[styles.label, { color: theme.text }]}>Address</Text>
+        <TextInput value={address} onChangeText={setAddress} style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]} multiline />
 
         <Pressable 
-          style={[styles.secondaryButton, saving && styles.buttonDisabled]} 
+          style={[styles.secondaryButton, saving && styles.buttonDisabled, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' }]} 
           onPress={onSave}
           disabled={saving}
         >
-          <Text style={styles.secondaryButtonText}>{saving ? 'Saving...' : 'Save Profile'}</Text>
+          <Text style={[styles.secondaryButtonText, isDarkMode && { color: theme.primary }]}>{saving ? 'Saving...' : 'Save Profile'}</Text>
         </Pressable>
 
-        <View style={styles.listCard}>
-          <Text style={styles.cardTitle}>Pickup History</Text>
+        <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Pickup History</Text>
           {!pickupHistory.length ? (
-            <Text style={styles.emptyText}>No pickups yet.</Text>
+            <Text style={[styles.emptyText, { color: theme.muted }]}>No pickups yet.</Text>
           ) : (
             pickupHistory.map((h) => (
               <Pressable
                 key={h.id}
-                style={styles.historyItem}
+                style={[styles.historyItem, isDarkMode && { borderBottomColor: 'rgba(255,255,255,0.05)' }]}
                 onPress={() => navigation.getParent()?.navigate('TrackPickup', { pickupId: h.id })}
               >
-                <Text style={styles.historyDate}>{h.createdAt}</Text>
-                <Text style={styles.historyMeta}>
+                <Text style={[styles.historyDate, { color: theme.text }]}>{h.createdAt}</Text>
+                <Text style={[styles.historyMeta, { color: theme.muted }]}>
                   {getPickupTracking(h, Date.now())?.currentStep.title} | Items: {h.items.length} | Value: ₹{h.totalEstimate || 0}
                 </Text>
-                <Text style={styles.historyLink}>Tap to track this pickup</Text>
+                <Text style={[styles.historyLink, { color: theme.accent }]}>Tap to track this pickup</Text>
               </Pressable>
             ))
           )}
@@ -2715,21 +2866,42 @@ function ProfileScreen({ navigation }) {
 }
 
 function MainTabs() {
-  const { user } = useApp();
+  const { user, isDarkMode } = useApp();
+  const theme = useTheme();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: THEME.primary,
-        tabBarInactiveTintColor: '#7B948B',
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: isDarkMode ? 'rgba(255,255,255,0.4)' : '#7B948B',
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: THEME.border,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 6
+          position: 'absolute',
+          bottom: 14,
+          left: 700,
+          right: 700,
+          borderRadius: 28,
+          height: 68,
+          backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.65)',
+          borderTopWidth: 0,
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.2,
+          shadowRadius: 15,
+          paddingBottom: 10,
+          paddingTop: 10,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
         },
+        tabBarBackground: () => (
+          <BlurView
+            intensity={isDarkMode ? 40 : 60}
+            tint={isDarkMode ? 'dark' : 'default'}
+            style={StyleSheet.absoluteFill}
+          />
+        ),
         tabBarIcon: ({ color, size }) => {
           const iconMap = {
             Home: 'view-dashboard-outline',
@@ -2769,6 +2941,55 @@ function MainTabs() {
   );
 }
 
+function FloatingHeader({ title, navigation }) {
+  const { isDarkMode } = useApp() || { isDarkMode: false };
+  const theme = useTheme();
+  
+  return (
+    <View style={{ position: 'absolute', top: 10, left: 0, right: 0, zIndex: 1000, paddingHorizontal: 18, paddingTop: Platform.OS === 'ios' ? 44 : 20, alignItems: 'center' }}>
+      <BlurView
+        intensity={isDarkMode ? 40 : 60}
+        tint={isDarkMode ? 'dark' : 'default'}
+        style={{
+          height: 54,
+          width: 'auto',
+          minWidth: 200,
+          maxWidth: '90%',
+          borderRadius: 27,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 14,
+          borderWidth: 1,
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+          backgroundColor: isDarkMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.7)',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.15,
+          shadowRadius: 12,
+          elevation: 8,
+          overflow: 'hidden'
+        }}
+      >
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={({ pressed }) => ({
+            width: 42,
+            height: 42,
+            borderRadius: 14,
+            backgroundColor: pressed ? 'rgba(0,0,0,0.05)' : 'transparent',
+            alignItems: 'center',
+            justifyContent: 'center'
+          })}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={24} color={theme.text} />
+        </Pressable>
+        <Text style={{ marginLeft: 10, fontSize: 18, fontWeight: '800', color: theme.text }}>{title}</Text>
+        <View style={{ width: 8 }} /> 
+      </BlurView>
+    </View>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState({
     name: 'GreenByte User',
@@ -2781,7 +3002,12 @@ export default function App() {
   const [pickupDetails, setPickupDetails] = useState({});
   const [pickupHistory, setPickupHistory] = useState([]);
   const [toast, setToast] = useState(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const toastTimer = React.useRef(null);
+
+  const toggleDarkMode = React.useCallback(() => {
+    setIsDarkMode((prev) => !prev);
+  }, []);
 
   const showToast = React.useCallback((message, type = 'success') => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -2803,25 +3029,45 @@ export default function App() {
       pickupDetails,
       setPickupDetails,
       pickupHistory,
-      setPickupHistory
+      setPickupHistory,
+      isDarkMode,
+      toggleDarkMode
     }),
-    [user, selectedItems, pickupDetails, pickupHistory]
+    [user, selectedItems, pickupDetails, pickupHistory, isDarkMode, toggleDarkMode]
   );
 
   return (
     <ToastContext.Provider value={showToast}>
       <AppContext.Provider value={contextValue}>
         <NavigationContainer>
-          <Stack.Navigator>
+          <Stack.Navigator screenOptions={{ headerTransparent: true }}>
             <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
             <Stack.Screen name="OtpVerification" component={OtpVerificationScreen} options={{ headerShown: false }} />
             <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-            <Stack.Screen name="SelectEWaste" component={SelectEWasteScreen} options={{ title: 'Select E-Waste' }} />
-            <Stack.Screen name="TrackPickup" component={TrackPickupScreen} options={{ title: 'Track Pickup' }} />
-            <Stack.Screen name="OrderSummary" component={OrderSummaryScreen} options={{ title: 'Order Summary' }} />
+            <Stack.Screen 
+              name="SelectEWaste" 
+              component={SelectEWasteScreen} 
+              options={{ 
+                header: (props) => <FloatingHeader title="Select E-Waste" navigation={props.navigation} />
+              }} 
+            />
+            <Stack.Screen 
+              name="TrackPickup" 
+              component={TrackPickupScreen} 
+              options={{ 
+                header: (props) => <FloatingHeader title="Track Pickup" navigation={props.navigation} />
+              }} 
+            />
+            <Stack.Screen 
+              name="OrderSummary" 
+              component={OrderSummaryScreen} 
+              options={{ 
+                header: (props) => <FloatingHeader title="Order Summary" navigation={props.navigation} />
+              }} 
+            />
           </Stack.Navigator>
         </NavigationContainer>
         <ToastBanner toast={toast} onDismiss={dismissToast} />
@@ -2831,6 +3077,23 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  glassCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  glassCardCompact: {
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    overflow: 'hidden',
+  },
   shell: {
     flex: 1,
     backgroundColor: THEME.bg
@@ -2839,7 +3102,7 @@ const styles = StyleSheet.create({
     padding: 18,
     paddingTop: 24,
     flexGrow: 1,
-    paddingBottom: 32,
+    paddingBottom: 100,
     maxWidth: 600,
     width: '100%',
     alignSelf: 'center'
@@ -2853,15 +3116,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center'
   },
   authCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
     padding: 22,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    shadowColor: '#000000',
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
     elevation: 3
   },
   screenHeader: {
@@ -2902,14 +3157,10 @@ const styles = StyleSheet.create({
     fontSize: 16
   },
   heroCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: THEME.border,
     minHeight: 360,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    padding: 24,
   },
   heroTitle: {
     marginTop: 18,
@@ -2964,17 +3215,8 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   homeHeroCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: THEME.border,
     padding: 22,
     marginBottom: 14,
-    shadowColor: '#0B2E26',
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 2
   },
   homeHeroBrandRow: {
     flexDirection: 'row',
@@ -3022,11 +3264,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    backgroundColor: '#F8FCFA',
     borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#DCEDE6'
+    padding: 12,
   },
   homeFeatureIcon: {
     width: 40,
@@ -3066,8 +3305,6 @@ const styles = StyleSheet.create({
     marginBottom: 10
   },
   trackingHeroCard: {
-    backgroundColor: '#0D6B4B',
-    borderRadius: 18,
     padding: 18,
     marginBottom: 12
   },
@@ -3167,11 +3404,11 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 92,
     borderWidth: 1,
-    borderColor: THEME.border,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     borderRadius: 999,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
     alignItems: 'center'
   },
   roleChipActive: {
@@ -3225,11 +3462,11 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: THEME.border,
+    borderColor: '#D5E7DF',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: THEME.text,
+    color: '#11322A',
     fontSize: 15
   },
   pickerField: {

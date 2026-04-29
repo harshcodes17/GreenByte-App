@@ -134,11 +134,23 @@ async function createPickup(payload) {
     }
   });
 
+  if (payload.targetRecyclerId) {
+    const recycler = await User.findById(payload.targetRecyclerId);
+    if (recycler && recycler.role === 'recycler') {
+      pickup.recyclerAssignment = {
+        recycler: recycler._id,
+        recyclerName: recycler.name,
+        recyclerPhone: recycler.phone,
+        assignedAt: new Date()
+      };
+    }
+  }
+
   appendActivity(pickup, {
     status: 'estimated',
     actorRole: 'customer',
     actorId: user._id,
-    note: `Pickup request created. Pending admin approval. (Gemini: ${estimate.estimationReasoning})`
+    note: payload.targetRecyclerId ? 'Automatically assigned to selected recycler.' : `Pickup request created. Pending admin approval. (Gemini: ${estimate.estimationReasoning})`
   });
 
   await pickup.save();
@@ -229,7 +241,10 @@ async function listRecyclerQueue(recyclerId, scope = 'open') {
     };
   }
 
-  return Pickup.find(query).sort({ createdAt: -1 }).lean();
+  return Pickup.find(query)
+    .sort({ createdAt: -1 })
+    .populate('user', 'name phone')
+    .lean();
 }
 
 async function decideRecyclerRequest(recyclerId, pickupId, decision, note = '') {
@@ -369,9 +384,13 @@ async function customerRespondNegotiation(pickupId, userId, accept) {
 
   if (accept) {
     pickup.totalEstimate = pickup.pricing.negotiatedAmount;
-    pickup.status = 'price_accepted';
+    // If a recycler was already assigned, return to 'assigned' status. 
+    // Otherwise, move to 'price_accepted' so a recycler can be assigned.
+    const wasAssigned = !!(pickup.recyclerAssignment && pickup.recyclerAssignment.recycler);
+    pickup.status = wasAssigned ? 'assigned' : 'price_accepted';
+    
     appendActivity(pickup, {
-      status: 'price_accepted',
+      status: pickup.status,
       actorRole: 'customer',
       actorId: userId,
       note: 'Customer accepted the negotiated price'

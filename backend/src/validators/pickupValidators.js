@@ -23,7 +23,8 @@ const pickupItemSchema = z
     name: z.string().trim().optional(),
     quantity: z.coerce.number().int().min(1),
     weightKg: z.coerce.number().positive().optional(),
-    condition: z.enum(['working', 'partially_working', 'non_working']).optional()
+    condition: z.string().optional(),
+    photoUri: z.string().optional()
   })
   .refine((value) => value.catalogItemId || (value.category && value.name), {
     message: 'Either catalogItemId or category + name is required'
@@ -44,6 +45,7 @@ const createPickupSchema = estimatePickupSchema.extend({
   phone: z.string().trim().min(10, 'Phone number is required'),
   notes: z.string().trim().max(300).optional(),
   acceptEstimatedPrice: z.boolean().optional(),
+  targetRecyclerId: objectIdSchema.optional(),
   paymentMethod: z.enum(['bank_transfer', 'upi', 'wallet']).optional()
 });
 

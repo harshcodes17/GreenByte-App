@@ -10,6 +10,7 @@ import {
   Text,
   TextInput,
   View,
+  Image,
   ImageBackground
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -313,6 +314,7 @@ function mapBackendPickupToFrontend(pickup) {
     createdAt: formatPickupDate(pickup.createdAt),
     createdAtMs: Date.parse(pickup.createdAt || '') || Date.now(),
     status: normalizeFrontendPickupStatus(pickup.status),
+    customerName: pickup.user?.name || '',
     pickupPartner:
       pickup.recyclerAssignment?.recyclerName || pickup.recyclerAssignment?.recyclerPhone
         ? {
@@ -337,7 +339,9 @@ function mapBackendPickupToFrontend(pickup) {
       unit: item.unit,
       price: item.price,
       quantity: item.quantity,
-      weightKg: item.weightKg || 0
+      weightKg: item.weightKg || 0,
+      condition: item.condition || '',
+      photoUri: item.photoUri || ''
     })),
     estimationReasoning: pickup.pricing?.estimationReasoning || '',
     totalEstimate: pickup.totalEstimate || 0,
@@ -633,6 +637,29 @@ function SelectionPickerModal({ visible, title, subtitle, options, selectedValue
             <Text style={styles.secondaryButtonText}>Close</Text>
           </Pressable>
         </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function FullscreenImageModal({ visible, imageUri, onClose }) {
+  if (!imageUri) return null;
+  return (
+    <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
+      <Pressable style={[styles.modalBackdrop, { backgroundColor: 'rgba(0,0,0,0.9)' }]} onPress={onClose}>
+        <View style={{ width: '95%', height: '85%', borderRadius: 16, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+          <Image 
+            source={{ uri: imageUri }} 
+            style={{ width: '100%', height: '100%' }} 
+            resizeMode="contain" 
+          />
+          <Pressable 
+            style={{ position: 'absolute', top: 40, right: 20, backgroundColor: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 20, zIndex: 10 }} 
+            onPress={onClose}
+          >
+            <MaterialCommunityIcons name="close" size={28} color="#FFF" />
+          </Pressable>
+        </View>
       </Pressable>
     </Modal>
   );
@@ -1145,9 +1172,9 @@ function HomeScreen({ navigation }) {
   ];
 
   const impactStats = [
-    { label: 'Recycled', value: '1.2 Tons', icon: 'recycle', color: '#4CAF50' },
-    { label: 'CO2 Saved', value: '450 Kg', icon: 'molecule-co2', color: '#00BCD4' },
-    { label: 'Points', value: '2,450', icon: 'star-outline', color: '#FFC107' }
+    { label: 'Recycled', value: '100,000 Kg+', icon: 'recycle', color: '#4CAF50' },
+    { label: 'CO2 Saved', value: '200,000 Kg+', icon: 'molecule-co2', color: '#00BCD4' },
+    { label: 'People Aware', value: '100,000+', icon: 'human-child', color: '#FFC107' }
   ];
 
   return (
@@ -1266,7 +1293,7 @@ function SelectEWasteScreen({ navigation }) {
   const [itemName, setItemName] = useState(PRICE_CATALOG[categories[0]][0].name);
   const [quantity, setQuantity] = useState('1');
   const [weightKg, setWeightKg] = useState('');
-  const [condition, setCondition] = useState('working');
+  const [condition, setCondition] = useState('');
   const [yearOfManufacturing, setYearOfManufacturing] = useState('');
   const [photoUri, setPhotoUri] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -1276,11 +1303,19 @@ function SelectEWasteScreen({ navigation }) {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
-      quality: 0.5,
+      quality: 0.4,
+      base64: true,
     });
 
     if (!result.canceled) {
-      setPhotoUri(result.assets[0].uri);
+      const asset = result.assets[0];
+      if (asset.base64) {
+        setPhotoUri(`data:image/jpeg;base64,${asset.base64}`);
+        console.log('Image captured as base64');
+      } else {
+        setPhotoUri(asset.uri);
+        console.log('Image captured as URI:', asset.uri);
+      }
     }
   };
 
@@ -1295,7 +1330,7 @@ function SelectEWasteScreen({ navigation }) {
   const resetForm = () => {
     setQuantity('1');
     setWeightKg('');
-    setCondition('working');
+    setCondition('');
     setYearOfManufacturing('');
     setPhotoUri('');
     setEditingId(null);
@@ -1433,20 +1468,7 @@ function SelectEWasteScreen({ navigation }) {
           </>
         )}
 
-        <Text style={[styles.label, { color: theme.text }]}>Condition</Text>
-        <View style={styles.chipsRow}>
-          {['working', 'partially_working', 'non_working'].map((c) => (
-            <Pressable
-              key={c}
-              style={[styles.chip, condition === c && styles.chipActive]}
-              onPress={() => setCondition(c)}
-            >
-              <Text style={[styles.chipText, condition === c && styles.chipTextActive]}>
-                {c.replace('_', ' ')}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <View style={{ height: 10 }} />
 
         <Text style={[styles.label, { color: theme.text }]}>Year of Manufacturing (optional)</Text>
         <TextInput
@@ -1459,12 +1481,16 @@ function SelectEWasteScreen({ navigation }) {
           maxLength={4}
         />
 
-        <Text style={[styles.label, { color: theme.text }]}>Photo (optional)</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 }}>
           <Pressable style={[styles.secondaryMiniButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' }]} onPress={pickImage}>
             <Text style={[styles.secondaryMiniButtonText, isDarkMode && { color: theme.text }]}>Pick Image</Text>
           </Pressable>
-          {photoUri ? <Text style={{ color: theme.primary, fontSize: 12 }}>Image selected</Text> : null}
+          {photoUri ? (
+            <View style={{ width: 44, height: 44, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: theme.primary }}>
+              <Image source={{ uri: photoUri }} style={{ width: '100%', height: '100%' }} />
+            </View>
+          ) : null}
+          {photoUri ? <Text style={{ color: theme.primary, fontSize: 12, fontWeight: '600' }}>Ready</Text> : null}
         </View>
 
         {formError ? (
@@ -1531,6 +1557,7 @@ function SchedulePickupScreen({ navigation }) {
   const [phone, setPhone] = useState(pickupDetails.phone || user?.phone || '');
   const [notes, setNotes] = useState(pickupDetails.notes || '');
   const [activePicker, setActivePicker] = useState(null);
+  const [targetRecyclerId, setTargetRecyclerId] = useState(pickupDetails.targetRecyclerId || '');
   const [formError, setFormError] = useState('');
   const [recyclers, setRecyclers] = useState([]);
 
@@ -1548,7 +1575,7 @@ function SchedulePickupScreen({ navigation }) {
       
       return points.map(pt => ({
         label: pt === address ? `${name} (${pt})` : `${name} - ${pt}`,
-        value: pt === address ? `${name} - ${pt}` : `${name} - ${pt}`
+        value: JSON.stringify({ label: `${name} - ${pt}`, id: r.user?._id })
       }));
     });
   }, [recyclers]);
@@ -1570,7 +1597,8 @@ function SchedulePickupScreen({ navigation }) {
       mode: 'dropoff',
       address,
       phone,
-      notes
+      notes,
+      targetRecyclerId
     });
     navigation.getParent()?.navigate('OrderSummary');
   };
@@ -1659,7 +1687,13 @@ function SchedulePickupScreen({ navigation }) {
           selectedValue={address}
           onClose={() => setActivePicker(null)}
           onSelect={(option) => {
-            setAddress(option.value);
+            try {
+              const parsed = JSON.parse(option.value);
+              setAddress(parsed.label);
+              setTargetRecyclerId(parsed.id);
+            } catch (e) {
+              setAddress(option.value);
+            }
             setActivePicker(null);
           }}
         />
@@ -1677,8 +1711,10 @@ function OrderSummaryScreen({ navigation }) {
     pickupHistory,
     setPickupHistory,
     setSelectedItems,
-    setPickupDetails
+    setPickupDetails,
+    isDarkMode
   } = useApp();
+  const theme = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEstimating, setIsEstimating] = useState(true);
   const [aiResult, setAiResult] = useState(null);
@@ -1734,15 +1770,18 @@ function OrderSummaryScreen({ navigation }) {
         method: 'POST',
         body: JSON.stringify({
           userId: user._id,
-          items: selectedItems.map((item) => ({
-            category: item.category,
-            name: item.name,
-            quantity: item.quantity,
-            condition: item.condition,
-            yearOfManufacturing: item.yearOfManufacturing,
-            photoUri: item.photoUri,
-            ...(item.unit === 'kg' ? { weightKg: item.weightKg } : {})
-          })),
+          items: selectedItems.map((item) => {
+            console.log(`Submitting item ${item.name} with photo length:`, item.photoUri?.length || 0);
+            return {
+              category: item.category,
+              name: item.name,
+              quantity: item.quantity,
+              condition: item.condition || '',
+              yearOfManufacturing: item.yearOfManufacturing,
+              photoUri: item.photoUri || '',
+              ...(item.unit === 'kg' ? { weightKg: item.weightKg } : {})
+            };
+          }),
           schedule: {
             dateLabel: pickupDetails.date || '',
             timeLabel: pickupDetails.time || ''
@@ -1751,10 +1790,9 @@ function OrderSummaryScreen({ navigation }) {
           address: pickupDetails.address || '',
           phone: pickupDetails.phone || user.phone || '',
           notes: pickupDetails.notes || '',
-          paymentMethod: 'upi'
+          targetRecyclerId: pickupDetails.targetRecyclerId || null
         })
       });
-
       const newRecord = mapBackendPickupToFrontend(response.data);
 
       setPickupHistory([newRecord, ...pickupHistory.filter((entry) => entry.id !== newRecord.id)]);
@@ -1776,18 +1814,18 @@ function OrderSummaryScreen({ navigation }) {
 
         <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Selected Items</Text>
-          {selectedItems.map((item) => (
+          {(selectedItems || []).map((item) => (
             <View key={item.id} style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>
+              <Text style={[styles.summaryLabel, { color: theme.text }]}>
                 {item.name} x {item.quantity}
               </Text>
-              <Text style={styles.summaryValue}>₹{computeItemEstimate(item)}</Text>
+              <Text style={[styles.summaryValue, { color: theme.primary }]}>₹{computeItemEstimate(item)}</Text>
             </View>
           ))}
           <View style={styles.summaryDivider} />
           <View style={styles.summaryRow}>
-            <Text style={styles.totalText}>Base Estimate</Text>
-            <Text style={styles.totalText}>₹{total}</Text>
+            <Text style={[styles.totalText, { color: theme.text }]}>Base Estimate</Text>
+            <Text style={[styles.totalText, { color: theme.primary }]}>₹{total}</Text>
           </View>
         </View>
 
@@ -1804,13 +1842,13 @@ function OrderSummaryScreen({ navigation }) {
             </View>
             
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Final Estimated Value</Text>
-              <Text style={[styles.totalText, { color: THEME.primary }]}>₹{aiResult.totalEstimate}</Text>
+              <Text style={[styles.summaryLabel, { color: theme.text }]}>Final Estimated Value</Text>
+              <Text style={[styles.totalText, { color: theme.primary }]}>₹{aiResult.totalEstimate}</Text>
             </View>
             
             {aiResult.estimationReasoning ? (
-              <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E0E0E0' }}>
-                <Text style={{ fontSize: 13, color: '#4A4A4A', fontStyle: 'italic', lineHeight: 18 }}>
+              <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#E0E0E0' }}>
+                <Text style={{ fontSize: 13, color: theme.muted, fontStyle: 'italic', lineHeight: 18 }}>
                   "{aiResult.estimationReasoning}"
                 </Text>
               </View>
@@ -1833,12 +1871,12 @@ function OrderSummaryScreen({ navigation }) {
           </View>
         ) : null}
 
-        <View style={styles.listCard}>
-          <Text style={styles.cardTitle}>Drop-off Details</Text>
-          <Text style={styles.pickupText}>Date: {pickupDetails.date || '-'}</Text>
-          <Text style={styles.pickupText}>Location: {pickupDetails.address || '-'}</Text>
-          <Text style={styles.pickupText}>Phone: {pickupDetails.phone || '-'}</Text>
-          {pickupDetails.notes ? <Text style={styles.pickupText}>Notes: {pickupDetails.notes}</Text> : null}
+        <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Drop-off Details</Text>
+          <Text style={[styles.pickupText, { color: theme.text }]}>Date: {pickupDetails.date || '-'}</Text>
+          <Text style={[styles.pickupText, { color: theme.text }]}>Location: {pickupDetails.address || '-'}</Text>
+          <Text style={[styles.pickupText, { color: theme.text }]}>Phone: {pickupDetails.phone || '-'}</Text>
+          {pickupDetails.notes ? <Text style={[styles.pickupText, { color: theme.text }]}>Notes: {pickupDetails.notes}</Text> : null}
         </View>
 
         {formError ? (
@@ -1894,22 +1932,54 @@ function RewardsShopScreen() {
   );
 }
 
-function RecyclerOperationsScreen() {
+function RecyclerOperationsScreen({ navigation }) {
   const showToast = useToast();
   const { user, setUser, pickupHistory, setPickupHistory, isDarkMode } = useApp();
   const theme = useTheme();
+  const prevStatuses = React.useRef({});
   
-  React.useEffect(() => {
-    const fetchRecyclerQueue = async () => {
-      try {
-        const res = await apiRequest(`/recyclers/${user._id}/requests?scope=all`);
-        setPickupHistory((res.data || []).map(mapBackendPickupToFrontend).filter(Boolean));
-      } catch (e) {
-        console.error(e);
+  const fetchRecyclerQueue = React.useCallback(async (isAutoRefresh = false) => {
+    try {
+      const res = await apiRequest(`/recyclers/${user._id}/requests?scope=all`);
+      const newData = (res.data || []).map(mapBackendPickupToFrontend).filter(Boolean);
+      
+      if (isAutoRefresh) {
+        // Detect status changes for assigned pickups to show notifications
+        newData.forEach(pickup => {
+          if (pickup.assignedRecyclerId === user._id) {
+            const oldStatus = prevStatuses.current[pickup.id];
+            if (oldStatus && oldStatus !== pickup.status) {
+              const statusLabel = REQUEST_STATUS_META[pickup.status]?.label || pickup.status;
+              showToast(`Job ${pickup.trackingId} status updated: ${statusLabel}`);
+            }
+            prevStatuses.current[pickup.id] = pickup.status;
+          }
+        });
+      } else {
+        // Initial load: just populate the ref
+        newData.forEach(pickup => {
+          if (pickup.assignedRecyclerId === user._id) {
+            prevStatuses.current[pickup.id] = pickup.status;
+          }
+        });
       }
-    };
+
+      setPickupHistory(newData);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [user._id, setPickupHistory, showToast]);
+
+  React.useEffect(() => {
     fetchRecyclerQueue();
-  }, [user._id, setPickupHistory]);
+    
+    // Set up polling interval (every 10 seconds)
+    const interval = setInterval(() => {
+      fetchRecyclerQueue(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [fetchRecyclerQueue]);
 
   const availabilityStatus = user.availabilityStatus || 'available';
   const openRequests = pickupHistory.filter((request) => {
@@ -1920,7 +1990,10 @@ function RecyclerOperationsScreen() {
     return request.status === 'price_accepted' && !request.assignedRecyclerId && !rejectedByMe;
   });
 
-  const assignedRequests = pickupHistory.filter((request) => request.assignedRecyclerId === user._id);
+  const assignedRequests = pickupHistory.filter((request) => 
+    request.assignedRecyclerId === user._id && 
+    !['cancelled', 'rejected', 'completed', 'paid'].includes(request.status)
+  );
   const assignedCount = assignedRequests.length;
 
   const onChangeAvailability = () => {
@@ -1980,52 +2053,64 @@ function RecyclerOperationsScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <ScreenHeader title="Recycler Dashboard" subtitle="Review new requests and manage collection availability." />
 
-        <Pressable style={styles.recyclerStatusCard} onPress={onChangeAvailability}>
+        <Pressable 
+          style={[styles.recyclerStatusCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]} 
+          onPress={onChangeAvailability}
+        >
           <View>
-            <Text style={styles.recyclerStatusLabel}>Availability</Text>
-            <Text style={styles.recyclerStatusValue}>{availabilityStatus}</Text>
+            <Text style={[styles.recyclerStatusLabel, { color: theme.muted }]}>AVAILABILITY</Text>
+            <Text style={[styles.recyclerStatusValue, { color: theme.text }]}>{availabilityStatus.toUpperCase()}</Text>
           </View>
-          <Text style={styles.recyclerStatusLink}>Tap to switch</Text>
+          <Text style={[styles.recyclerStatusLink, { color: theme.primary }]}>Tap to switch</Text>
         </Pressable>
 
         <View style={styles.metricGrid}>
-          <View style={styles.metricCard}>
-            <MaterialCommunityIcons name="inbox-arrow-down-outline" size={24} color={THEME.primary} />
-            <Text style={styles.metricValue}>{openRequests.length}</Text>
-            <Text style={styles.metricLabel}>Open requests</Text>
+          <View style={[styles.metricCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <MaterialCommunityIcons name="inbox-arrow-down-outline" size={24} color={theme.primary} />
+            <Text style={[styles.metricValue, { color: theme.text }]}>{openRequests.length}</Text>
+            <Text style={[styles.metricLabel, { color: theme.muted }]}>Open requests</Text>
           </View>
-          <View style={styles.metricCard}>
-            <MaterialCommunityIcons name="truck-check-outline" size={24} color={THEME.primary} />
-            <Text style={styles.metricValue}>{assignedCount}</Text>
-            <Text style={styles.metricLabel}>Assigned to you</Text>
+          <View style={[styles.metricCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <MaterialCommunityIcons name="truck-check-outline" size={24} color={theme.primary} />
+            <Text style={[styles.metricValue, { color: theme.text }]}>{assignedCount}</Text>
+            <Text style={[styles.metricLabel, { color: theme.muted }]}>Assigned to you</Text>
           </View>
         </View>
 
         {assignedRequests.length > 0 && (
-          <View style={styles.listCard}>
+          <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
             
-            {assignedRequests.slice(0, 2).map((request) => (
-              <View key={request.id} style={styles.requestCard}>
-                <View style={styles.requestCardHeader}>
-                  <View>
-                    <Text style={styles.requestCardTitle}>{request.trackingId}</Text>
-                    <Text style={styles.requestCardMeta}>
-                      {request.items.length} items | Value ₹{request.totalEstimate || 0}
-                    </Text>
+            {assignedRequests.slice(0, 2).map((request) => {
+              const statusMeta = REQUEST_STATUS_META[request.status] || { label: 'Assigned', tone: 'active' };
+              return (
+                <Pressable 
+                  key={request.id} 
+                  style={[styles.requestCard, isDarkMode && { borderBottomColor: 'rgba(255,255,255,0.05)' }]}
+                  onPress={() => navigation.navigate('Assigned')}
+                >
+                  <View style={styles.requestCardHeader}>
+                    <View>
+                      <Text style={[styles.requestCardTitle, { color: theme.text }]}>{request.trackingId}</Text>
+                      <Text style={[styles.requestCardMeta, { color: theme.muted }]}>
+                        {request.items.length} items | Value ₹{request.totalEstimate || 0}
+                      </Text>
+                    </View>
+                    <View style={[
+                      styles.statusBadge, 
+                      statusMeta.tone === 'warning' ? styles.statusBadgeWarning : styles.statusBadgeActive
+                    ]}>
+                      <Text style={styles.statusBadgeText}>{statusMeta.label}</Text>
+                    </View>
                   </View>
-                  <View style={[styles.statusBadge, styles.statusBadgeActive]}>
-                    <Text style={styles.statusBadgeText}>Assigned</Text>
-                  </View>
-                </View>
-                <Text style={styles.requestDetailLine}>Location: {request.pickupDetails?.address || '-'}</Text>
-               
-              </View>
-            ))}
+                  <Text style={[styles.requestDetailLine, { color: theme.text }]}>Location: {request.pickupDetails?.address || '-'}</Text>
+                </Pressable>
+              );
+            })}
           </View>
         )}
 
-        <View style={styles.listCard}>
-          <Text style={styles.cardTitle}>New Collection Requests</Text>
+        <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>New Collection Requests</Text>
           {!openRequests.length ? (
             <Text style={styles.emptyText}>No new requests are waiting right now.</Text>
           ) : (
@@ -2033,8 +2118,10 @@ function RecyclerOperationsScreen() {
               <View key={request.id} style={styles.requestCard}>
                 <View style={styles.requestCardHeader}>
                   <View>
-                    <Text style={styles.requestCardTitle}>{request.requestMode === 'dropoff' ? 'Drop-off Request' : 'Pickup Request'}</Text>
-                    <Text style={styles.requestCardMeta}>
+                    <Text style={[styles.requestCardTitle, isDarkMode && { color: theme.text }]}>
+                      {request.requestMode === 'dropoff' ? 'Drop-off Request' : 'Pickup Request'}
+                    </Text>
+                    <Text style={[styles.requestCardMeta, isDarkMode && { color: theme.muted }]}>
                       {request.items.length} items | Value ₹{request.totalEstimate || 0}
                     </Text>
                   </View>
@@ -2042,11 +2129,15 @@ function RecyclerOperationsScreen() {
                     <Text style={styles.statusBadgeText}>New</Text>
                   </View>
                 </View>
-                <Text style={styles.requestDetailLine}>Date: {request.pickupDetails?.date || '-'}</Text>
-                <Text style={styles.requestDetailLine}>Location: {request.pickupDetails?.address || '-'}</Text>
+                <Text style={[styles.requestDetailLine, { color: theme.text }]}>Customer: {request.customerName || '-'}</Text>
+                <Text style={[styles.requestDetailLine, { color: theme.text }]}>Date: {request.pickupDetails?.date || '-'}</Text>
+                <Text style={[styles.requestDetailLine, { color: theme.text }]}>Location: {request.pickupDetails?.address || '-'}</Text>
                 <View style={styles.requestActionRow}>
-                  <Pressable style={styles.secondaryMiniButton} onPress={() => onReject(request.id)}>
-                    <Text style={styles.secondaryMiniButtonText}>Reject</Text>
+                  <Pressable 
+                    style={[styles.secondaryMiniButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' }]} 
+                    onPress={() => onReject(request.id)}
+                  >
+                    <Text style={[styles.secondaryMiniButtonText, isDarkMode && { color: theme.text }]}>Reject</Text>
                   </Pressable>
                   <Pressable style={styles.primaryMiniButton} onPress={() => onAccept(request.id)}>
                     <Text style={styles.primaryMiniButtonText}>Accept</Text>
@@ -2063,9 +2154,10 @@ function RecyclerOperationsScreen() {
 
 function RecyclerAssignedScreen({ navigation }) {
   const showToast = useToast();
-  const { user, pickupHistory, setPickupHistory } = useApp();
+  const { user, pickupHistory, setPickupHistory, isDarkMode } = useApp();
+  const theme = useTheme();
   const assignedRequests = pickupHistory.filter(
-    (request) => request.assignedRecyclerId === user._id && request.status !== 'rejected'
+    (request) => request.assignedRecyclerId === user._id && !['cancelled', 'rejected'].includes(request.status)
   );
 
   const onAdvance = async (requestId, currentStatus) => {
@@ -2108,11 +2200,11 @@ function RecyclerAssignedScreen({ navigation }) {
             const actionText = getButtonLabel(request.status);
 
             return (
-              <View key={request.id} style={styles.listCard}>
+              <View key={request.id} style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
                 <View style={styles.requestCardHeader}>
                   <View>
-                    <Text style={styles.requestCardTitle}>{request.trackingId}</Text>
-                    <Text style={styles.requestCardMeta}>{request.items.length} items | ₹{request.totalEstimate || 0}</Text>
+                    <Text style={[styles.requestCardTitle, { color: theme.text }]}>{request.trackingId}</Text>
+                    <Text style={[styles.requestCardMeta, { color: theme.muted }]}>{request.items.length} items | ₹{request.totalEstimate || 0}</Text>
                   </View>
                   <View
                     style={[
@@ -2127,8 +2219,8 @@ function RecyclerAssignedScreen({ navigation }) {
                     <Text style={styles.statusBadgeText}>{statusMeta.label}</Text>
                   </View>
                 </View>
-                <Text style={styles.requestDetailLine}>Customer: {request.pickupDetails?.phone || '-'}</Text>
-                <Text style={styles.requestDetailLine}>Address: {request.pickupDetails?.address || '-'}</Text>
+                <Text style={[styles.requestDetailLine, { color: theme.text }]}>Customer: {request.customerName} ({request.pickupDetails?.phone || '-'})</Text>
+                <Text style={[styles.requestDetailLine, { color: theme.text }]}>Address: {request.pickupDetails?.address || '-'}</Text>
                 {actionText ? (
                   <Pressable style={styles.primaryButton} onPress={() => onAdvance(request.id, request.status)}>
                     <Text style={styles.primaryButtonText}>{actionText}</Text>
@@ -2246,7 +2338,8 @@ function AdminOverviewScreen({ navigation }) {
 }
 
 function AdminRequestsScreen({ navigation }) {
-  const { pickupHistory } = useApp();
+  const { pickupHistory, isDarkMode } = useApp();
+  const theme = useTheme();
 
   return (
     <ScreenShell>
@@ -2263,13 +2356,13 @@ function AdminRequestsScreen({ navigation }) {
             return (
               <Pressable
                 key={request.id}
-                style={styles.listCard}
+                style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}
                 onPress={() => navigation.getParent()?.navigate('TrackPickup', { pickupId: request.id })}
               >
                 <View style={styles.requestCardHeader}>
                   <View>
-                    <Text style={styles.requestCardTitle}>{request.trackingId || request.id}</Text>
-                    <Text style={styles.requestCardMeta}>
+                    <Text style={[styles.requestCardTitle, isDarkMode && { color: theme.text }]}>{request.trackingId || request.id}</Text>
+                    <Text style={[styles.requestCardMeta, isDarkMode && { color: theme.muted }]}>
                       {request.pickupDetails?.date || '-'} | ₹{request.totalEstimate || 0}
                     </Text>
                   </View>
@@ -2292,12 +2385,12 @@ function AdminRequestsScreen({ navigation }) {
                     <Text style={styles.statusBadgeText}>{statusMeta.label}</Text>
                   </View>
                 </View>
-                <Text style={styles.requestDetailLine}>Mode: {request.requestMode === 'dropoff' ? 'Drop-off' : 'Doorstep Pickup'}</Text>
-                <Text style={styles.requestDetailLine}>Customer phone: {request.pickupDetails?.phone || '-'}</Text>
-                <Text style={styles.requestDetailLine}>
+                <Text style={[styles.requestDetailLine, { color: theme.text }]}>Mode: {request.requestMode === 'dropoff' ? 'Drop-off' : 'Doorstep Pickup'}</Text>
+                <Text style={[styles.requestDetailLine, { color: theme.text }]}>Customer: {request.customerName} ({request.pickupDetails?.phone || '-'})</Text>
+                <Text style={[styles.requestDetailLine, { color: theme.text }]}>
                   Recycler: {request.assignedRecyclerName || request.pickupPartner?.name || 'Not assigned'}
                 </Text>
-                <Text style={styles.historyLink}>Tap to inspect tracking view</Text>
+                <Text style={[styles.historyLink, { color: theme.primary }]}>Tap to inspect tracking view</Text>
               </Pressable>
             );
           })
@@ -2320,6 +2413,7 @@ function TrackPickupScreen({ navigation, route }) {
   const showPartnerDetails = Boolean(pickup && ASSIGNED_STATUSES.includes(pickup.status));
   const [adminRecyclers, setAdminRecyclers] = useState([]);
   const [showRecyclerModal, setShowRecyclerModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // Refetch the pickup data from the backend after any mutation
   const refetchPickup = React.useCallback(async () => {
@@ -2449,17 +2543,35 @@ function TrackPickupScreen({ navigation, route }) {
             </View>
           ) : null}
 
-          {showPartnerDetails ? (
-            <View style={[styles.partnerCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-              <View style={styles.partnerHeader}>
-                <MaterialCommunityIcons name="account-tie-outline" size={20} color={theme.primary} />
-                <Text style={[styles.partnerHeaderText, isDarkMode && { color: theme.text }]}>Assigned pickup partner</Text>
+          {/* Items & Photos Section */}
+          <View style={[styles.trackingAddressCard, { marginTop: 12, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#FFFFFF', flexDirection: 'column', alignItems: 'stretch' }]}>
+            <Text style={[styles.trackingAddressLabel, { marginBottom: 12, color: theme.text, fontWeight: '700' }]}>Items & Photos</Text>
+            {(pickup.items || []).map((item, idx) => (
+              <View key={idx} style={{ marginBottom: 16, paddingBottom: 16, borderBottomWidth: idx < pickup.items.length - 1 ? 1 : 0, borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F0F0F0' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ color: theme.text, fontWeight: '600', fontSize: 15 }}>{item.name} x {item.quantity}</Text>
+                  <Text style={{ color: theme.primary, fontWeight: '700' }}>₹{computeItemEstimate(item)}</Text>
+                </View>
+                {item.photoUri ? (
+                  <Pressable 
+                    onPress={() => setSelectedImage(item.photoUri)}
+                    style={{ marginTop: 10, borderRadius: 12, overflow: 'hidden', height: 180, backgroundColor: isDarkMode ? '#000' : '#F5F5F5' }}
+                  >
+                    <Image 
+                      source={{ uri: item.photoUri }} 
+                      style={{ width: '100%', height: '100%' }} 
+                      resizeMode="cover"
+                    />
+                  </Pressable>
+                ) : (
+                  <View style={{ marginTop: 8, padding: 12, borderRadius: 8, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#F9F9F9', alignItems: 'center' }}>
+                    <MaterialCommunityIcons name="image-off-outline" size={24} color={theme.muted} />
+                    <Text style={{ color: theme.muted, fontSize: 12, marginTop: 4 }}>No photo uploaded</Text>
+                  </View>
+                )}
               </View>
-              <Text style={[styles.partnerName, isDarkMode && { color: theme.text }]}>{assignedPartner.name}</Text>
-              <Text style={[styles.partnerPhoneLabel, isDarkMode && { color: theme.muted }]}>Partner mobile number</Text>
-              <Text style={[styles.partnerPhoneValue, isDarkMode && { color: theme.primary }]}>{assignedPartner.phone}</Text>
-            </View>
-          ) : null}
+            ))}
+          </View>
         </View>
 
         {pickup.status !== 'cancelled' && pickup.status !== 'rejected' && user?.role !== 'admin' && (
@@ -2509,8 +2621,8 @@ function TrackPickupScreen({ navigation, route }) {
         )}
 
         {user.role === 'admin' && pickup.status === 'estimated' && (
-          <View style={styles.listCard}>
-            <Text style={styles.cardTitle}>Admin Controls</Text>
+          <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Admin Controls</Text>
             <Pressable
               style={styles.primaryButton}
               onPress={async () => {
@@ -2557,10 +2669,10 @@ function TrackPickupScreen({ navigation, route }) {
           </View>
         )}
 
-        {user.role === 'admin' && pickup.status === 'price_accepted' && (
-          <View style={styles.listCard}>
-            <Text style={styles.cardTitle}>Admin Assignment</Text>
-            <Text style={styles.summaryLabel}>Price is accepted. Please assign a recycler to process this request.</Text>
+        {user.role === 'admin' && pickup.status === 'price_accepted' && !pickup.assignedRecyclerId && (
+          <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Admin Assignment</Text>
+            <Text style={[styles.summaryLabel, isDarkMode && { color: '#B0C4BE' }]}>Price is accepted. Please assign a recycler to process this request.</Text>
             <Pressable
               style={styles.primaryButton}
               onPress={() => setShowRecyclerModal(true)}
@@ -2571,8 +2683,8 @@ function TrackPickupScreen({ navigation, route }) {
         )}
 
         {user.role === 'admin' && pickup.status === 'recycled' && (
-          <View style={styles.listCard}>
-            <Text style={styles.cardTitle}>Payment Processing</Text>
+          <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <Text style={[styles.cardTitle, isDarkMode && { color: '#FFFFFF' }]}>Payment Processing</Text>
             <Pressable
               style={styles.primaryButton}
               onPress={async () => {
@@ -2662,7 +2774,7 @@ function TrackPickupScreen({ navigation, route }) {
                     body: JSON.stringify({ userId: user._id, accept: true })
                   });
                   await refetchPickup();
-                  showToast('Price accepted! Your request is confirmed.');
+                  showToast('Price accepted! Your request is confirmed and assigned to the recycler.', 'success');
                 } catch (e) {
                   showToast(e.message, 'error');
                 }
@@ -2789,6 +2901,11 @@ function TrackPickupScreen({ navigation, route }) {
             }
           }}
         />
+        <FullscreenImageModal
+          visible={!!selectedImage}
+          imageUri={selectedImage}
+          onClose={() => setSelectedImage(null)}
+        />
       </ScrollView>
     </ScreenShell>
   );
@@ -2843,13 +2960,13 @@ function ProfileScreen({ navigation }) {
         </View>
 
         <Text style={[styles.label, { color: theme.text }]}>Name</Text>
-        <TextInput value={name} onChangeText={setName} style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]} />
+        <TextInput value={name} onChangeText={setName} style={[styles.input, { color: theme.text }, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]} />
 
         <Text style={[styles.label, { color: theme.text }]}>Phone</Text>
-        <TextInput value={phone} onChangeText={setPhone} style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]} keyboardType="phone-pad" />
+        <TextInput value={phone} onChangeText={setPhone} style={[styles.input, { color: theme.text }, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]} keyboardType="phone-pad" />
 
         <Text style={[styles.label, { color: theme.text }]}>Address</Text>
-        <TextInput value={address} onChangeText={setAddress} style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]} multiline />
+        <TextInput value={address} onChangeText={setAddress} style={[styles.input, { color: theme.text }, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]} multiline />
 
         <Pressable 
           style={[styles.secondaryButton, saving && styles.buttonDisabled, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' }]} 
@@ -2901,8 +3018,8 @@ function MainTabs() {
         tabBarStyle: {
           position: 'absolute',
           bottom: 14,
-          left: 40,
-          right: 40,
+          left: Platform.OS === 'web' ? '25%' : 16,
+          right: Platform.OS === 'web' ? '25%' : 16,
           borderRadius: 28,
           height: 68,
           backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.65)',
@@ -3483,13 +3600,13 @@ const styles = StyleSheet.create({
     lineHeight: 20
   },
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#FFFFFF',
+    color: '#11322A',
     fontSize: 15
   },
   pickerField: {
@@ -3632,7 +3749,7 @@ const styles = StyleSheet.create({
   },
   listCard: {
     marginTop: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderWidth: 1,
     borderColor: THEME.border,
     borderRadius: 14,

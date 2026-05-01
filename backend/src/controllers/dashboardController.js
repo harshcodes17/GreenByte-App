@@ -1,11 +1,11 @@
 const asyncHandler = require('../utils/asyncHandler');
 const validate = require('../utils/validate');
 const ApiError = require('../utils/apiError');
-const { dashboardParamsSchema } = require('../validators/rewardValidators');
+const { userIdParamsSchema } = require('../validators/userValidators');
 const { getLatestSystemSnapshot, getUserDashboard } = require('../services/analyticsService');
 
 const getDashboard = asyncHandler(async (req, res) => {
-  const { userId } = validate(dashboardParamsSchema, req.params);
+  const { userId } = validate(userIdParamsSchema, req.params);
   const [systemSnapshot, userDashboard] = await Promise.all([
     getLatestSystemSnapshot(),
     getUserDashboard(userId)

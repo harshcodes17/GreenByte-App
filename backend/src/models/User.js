@@ -61,10 +61,6 @@ const userSchema = new mongoose.Schema(
         type: Date,
         default: null
       }
-    },
-    coinsBalance: {
-      type: Number,
-      default: 0
     }
   },
   {

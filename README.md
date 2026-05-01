@@ -1,9 +1,9 @@
 # GreenByte Platform
 
-GreenByte is a modernized e-waste collection and rewards platform designed to streamline sustainable recycling through a transparent, administrative-driven lifecycle.
+GreenByte is a modernized e-waste collection platform designed to streamline sustainable recycling through a transparent, administrative-driven lifecycle.
 
 The platform has three user roles:
-- `customer`: Register, schedule drop-offs, track impact, and redeem rewards.
+- `customer`: Register, schedule drop-offs, and track environmental impact.
 - `recycler`: Manage collection points, accept drop-off requests, and move items through recycling stages.
 - `admin`: Monitor system-wide analytics, approve pricing, and manually assign recyclers to validated requests.
 
@@ -72,7 +72,7 @@ The easiest way to get the full stack running with a pre-populated database:
    ```bash
    docker-compose up --build
    ```
-   *The API will automatically seed the catalog and rewards data on its first startup.*
+   *The API will automatically seed the catalog data on its first startup.*
 
 4. **Access the App**:
    The backend will be running at `http://localhost:4000`. You can now start the frontend (see below).
@@ -121,7 +121,7 @@ npm run seed
 2. **Select E-Waste**: Browse the catalog and add items for estimation.
 3. **Schedule Drop-off**: Select a preferred **Recycler Collection Point** and a drop-off date.
 4. **Track Status**: Monitor the "Drop-off Status" screen for admin approval and recycler validation.
-5. **Impact**: View CO2 saved and coins earned on the dashboard.
+5. **Impact**: View CO2 saved and environmental metrics on the dashboard.
 
 ### Admin Flow
 1. **Overview**: Monitor system-wide totals (CO2, weight, users).

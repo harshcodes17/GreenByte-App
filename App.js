@@ -690,7 +690,6 @@ function SplashScreen({ navigation }) {
 function OnboardingScreen({ navigation }) {
   const slides = [
     { title: 'Transform your waste', text: 'Turn old electronics into measurable environmental impact.' },
-    { title: 'Earn rewards', text: 'Get fair value using trusted GreenByte supplier pricing.' },
     { title: 'Schedule pickup', text: 'Choose your date, time, and address in under a minute.' }
   ];
   const [index, setIndex] = useState(0);
@@ -1165,9 +1164,9 @@ function HomeScreen({ navigation }) {
       text: 'Every item is processed with industrial-grade sustainability standards and zero landfill waste.'
     },
     {
-      icon: 'gift-outline',
-      title: 'Earn Rewards',
-      text: 'Contribute to a greener planet and earn GreenPoints for every successful eco-dropoff.'
+      icon: 'chart-line-variant',
+      title: 'Track Your Impact',
+      text: 'Monitor your contribution to CO2 reduction and raw material recovery in real-time.'
     }
   ];
 
@@ -1894,39 +1893,6 @@ function OrderSummaryScreen({ navigation }) {
             {isSubmitting ? 'Confirming...' : 'Confirm Pickup Request'}
           </Text>
         </Pressable>
-      </ScrollView>
-    </ScreenShell>
-  );
-}
-
-function RewardsShopScreen() {
-  const { isDarkMode } = useApp();
-  const theme = useTheme();
-  const rewards = [
-    { name: 'Eco Tote Bag', coins: 120 },
-    { name: 'Plant a Tree', coins: 200 },
-    { name: 'Gift Voucher', coins: 350 },
-    { name: 'Recycled Notebook', coins: 90 }
-  ];
-
-  return (
-    <ScreenShell>
-      <ScrollView contentContainerStyle={styles.container}>
-        <ScreenHeader title="Rewards Shop" subtitle="Redeem rewards with your coins." />
-        <View style={[styles.coinsCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-          <Text style={[styles.coinCount, { color: theme.primary }]}>1,240 Coins</Text>
-          <Text style={[styles.coinMeta, { color: theme.muted }]}>Keep scheduling pickups to earn more.</Text>
-        </View>
-
-        {rewards.map((item) => (
-          <View key={item.name} style={[styles.rewardCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-            <Text style={[styles.rewardTitle, { color: theme.text }]}>{item.name}</Text>
-            <Text style={[styles.rewardCoins, { color: theme.muted }]}>{item.coins} coins</Text>
-            <Pressable style={[styles.miniButton, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-              <Text style={[styles.miniButtonText, { color: theme.primary }]}>Redeem</Text>
-            </Pressable>
-          </View>
-        ))}
       </ScrollView>
     </ScreenShell>
   );
@@ -3073,7 +3039,6 @@ function MainTabs() {
         <>
           <Tab.Screen name="Home" component={HomeScreen} />
           <Tab.Screen name="Schedule" component={SchedulePickupScreen} />
-          <Tab.Screen name="Shop" component={RewardsShopScreen} />
           <Tab.Screen name="Profile" component={ProfileScreen} />
         </>
       )}
@@ -3952,41 +3917,6 @@ const styles = StyleSheet.create({
     color: THEME.text,
     marginBottom: 6,
     lineHeight: 20
-  },
-  coinsCard: {
-    backgroundColor: '#FFF5D9',
-    borderColor: '#F5D99D',
-    borderWidth: 1,
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 8
-  },
-  coinCount: {
-    color: '#7A5A00',
-    fontSize: 24,
-    fontWeight: '800'
-  },
-  coinMeta: {
-    marginTop: 4,
-    color: '#8F6D14'
-  },
-  rewardCard: {
-    marginTop: 10,
-    backgroundColor: '#FFFFFF',
-    borderColor: THEME.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  rewardTitle: {
-    color: THEME.text,
-    fontWeight: '700'
-  },
-  rewardCoins: {
-    color: THEME.muted
   },
   adminActivityRow: {
     borderTopWidth: 1,

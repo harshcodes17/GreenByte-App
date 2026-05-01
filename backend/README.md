@@ -9,7 +9,6 @@ This backend is designed around the flows already present in the Expo frontend:
 - create pickup request
 - view pickup history
 - view dashboard metrics
-- list and redeem rewards
 
 ## 1. Folder structure
 
@@ -57,10 +56,6 @@ Stores one pickup request with:
 - estimate
 - impact values
 - status
-
-### Reward and RewardRedemption
-
-Support the rewards shop and coin redemption.
 
 ### AnalyticsSnapshot
 
@@ -129,11 +124,6 @@ Create payload example:
 }
 ```
 
-### Rewards
-
-- `GET /rewards`
-- `POST /rewards/redeem`
-
 ### Dashboard
 
 - `GET /dashboard/:userId`
@@ -144,7 +134,7 @@ The analytics pipeline lives in `scripts/runAnalyticsPipeline.js`.
 
 What it does:
 
-1. Reads pickups, users, and reward redemptions.
+1. Reads pickups and users.
 2. Aggregates totals like pickups, value, weight, and CO2 saved.
 3. Finds top e-waste categories.
 4. Stores the result in `analytics_snapshots`.
@@ -218,12 +208,10 @@ Frontend should call:
 - `PATCH /users/:userId`
 - `GET /pickups?userId=...`
 
-### Rewards shop and dashboard
+### Dashboard
 
 Frontend should call:
 
-- `GET /rewards`
-- `POST /rewards/redeem`
 - `GET /dashboard/:userId`
 
 ## 7. Next scaling steps

@@ -150,8 +150,7 @@ const pickupSchema = new mongoose.Schema(
     impact: {
       co2SavedKg: { type: Number, required: true },
       treesSaved: { type: Number, required: true },
-      rawMaterialRecoveredKg: { type: Number, required: true },
-      coinsEarned: { type: Number, required: true }
+      rawMaterialRecoveredKg: { type: Number, required: true }
     },
     recyclerAssignment: {
       recycler: {
@@ -230,11 +229,7 @@ const pickupSchema = new mongoose.Schema(
           default: Date.now
         }
       }
-    ],
-    coinsCreditedAt: {
-      type: Date,
-      default: null
-    }
+    ]
   },
   {
     timestamps: true

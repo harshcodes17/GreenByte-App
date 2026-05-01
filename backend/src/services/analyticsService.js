@@ -1,14 +1,13 @@
 const mongoose = require('mongoose');
 const AnalyticsSnapshot = require('../models/AnalyticsSnapshot');
 const Pickup = require('../models/Pickup');
-const RewardRedemption = require('../models/RewardRedemption');
 const User = require('../models/User');
 
 async function buildSystemSnapshot(snapshotDate = new Date()) {
   const dayStart = new Date(snapshotDate);
   dayStart.setHours(0, 0, 0, 0);
 
-  const [totalUsers, pickupTotals, rewardTotals, topCategories] = await Promise.all([
+  const [totalUsers, pickupTotals, topCategories] = await Promise.all([
     User.countDocuments(),
     Pickup.aggregate([
       {
@@ -25,14 +24,6 @@ async function buildSystemSnapshot(snapshotDate = new Date()) {
           totalCo2SavedKg: { $sum: '$impact.co2SavedKg' },
           totalTreesSaved: { $sum: '$impact.treesSaved' },
           totalRawMaterialRecoveredKg: { $sum: '$impact.rawMaterialRecoveredKg' }
-        }
-      }
-    ]),
-    RewardRedemption.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalCoinsRedeemed: { $sum: '$coinsSpent' }
         }
       }
     ]),
@@ -57,7 +48,6 @@ async function buildSystemSnapshot(snapshotDate = new Date()) {
   ]);
 
   const pickupTotal = pickupTotals[0] || {};
-  const rewardTotal = rewardTotals[0] || {};
 
   return AnalyticsSnapshot.findOneAndUpdate(
     { snapshotDate: dayStart },
@@ -72,8 +62,7 @@ async function buildSystemSnapshot(snapshotDate = new Date()) {
           totalWeightKg: pickupTotal.totalWeightKg || 0,
           totalCo2SavedKg: pickupTotal.totalCo2SavedKg || 0,
           totalTreesSaved: pickupTotal.totalTreesSaved || 0,
-          totalRawMaterialRecoveredKg: pickupTotal.totalRawMaterialRecoveredKg || 0,
-          totalCoinsRedeemed: rewardTotal.totalCoinsRedeemed || 0
+          totalRawMaterialRecoveredKg: pickupTotal.totalRawMaterialRecoveredKg || 0
         },
         topCategories
       }
@@ -86,7 +75,7 @@ async function buildSystemSnapshot(snapshotDate = new Date()) {
 }
 
 async function getUserDashboard(userId) {
-  const [user, pickupTotals, recentPickups, redemptions] = await Promise.all([
+  const [user, pickupTotals, recentPickups] = await Promise.all([
     User.findById(userId).lean(),
     Pickup.aggregate([
       { $match: { user: mongoose.Types.ObjectId.createFromHexString(userId) } },
@@ -105,8 +94,7 @@ async function getUserDashboard(userId) {
         }
       }
     ]),
-    Pickup.find({ user: userId }).sort({ createdAt: -1 }).limit(5).lean(),
-    RewardRedemption.find({ user: userId }).sort({ createdAt: -1 }).limit(5).lean()
+    Pickup.find({ user: userId }).sort({ createdAt: -1 }).limit(5).lean()
   ]);
 
   if (!user) {
@@ -118,18 +106,8 @@ async function getUserDashboard(userId) {
       _id: user._id,
       name: user.name,
       phone: user.phone,
-      address: user.address,
-      coinsBalance: user.coinsBalance
     },
-    impact: pickupTotals[0] || {
-      pickupsCompleted: 0,
-      totalWeightKg: 0,
-      totalCo2SavedKg: 0,
-      totalTreesSaved: 0,
-      totalRawMaterialRecoveredKg: 0
-    },
-    recentPickups,
-    recentRedemptions: redemptions
+    recentPickups
   };
 }
 

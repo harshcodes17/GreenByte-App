@@ -8,7 +8,7 @@ const { seedBaseData } = require('../src/services/bootstrapService');
 async function run() {
   await connectDatabase();
   await seedBaseData();
-  console.log('Catalog and rewards seeded successfully');
+  console.log('Catalog seeded successfully');
   process.exit(0);
 }
 

@@ -4,7 +4,6 @@ const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
 const catalogRoutes = require('./catalogRoutes');
 const pickupRoutes = require('./pickupRoutes');
-const rewardRoutes = require('./rewardRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
 const recyclerRoutes = require('./recyclerRoutes');
 const adminRoutes = require('./adminRoutes');
@@ -22,7 +21,6 @@ router.get('/', (req, res) => {
       users: '/api/v1/users/:userId',
       catalog: '/api/v1/catalog',
       pickups: '/api/v1/pickups',
-      rewards: '/api/v1/rewards',
       dashboard: '/api/v1/dashboard/:userId',
       recyclers: '/api/v1/recyclers',
       admin: '/api/v1/admin'
@@ -35,7 +33,6 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/catalog', catalogRoutes);
 router.use('/pickups', pickupRoutes);
-router.use('/rewards', rewardRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/recyclers', recyclerRoutes);
 router.use('/admin', adminRoutes);

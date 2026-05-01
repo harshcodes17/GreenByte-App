@@ -180,25 +180,6 @@ async function updatePickupStatus(pickupId, status) {
     pickup.payment.status = 'processing';
   }
 
-  if ((status === 'completed' || status === 'paid') && !pickup.coinsCreditedAt) {
-    await User.findByIdAndUpdate(pickup.user, {
-      $inc: { coinsBalance: pickup.impact.coinsEarned }
-    });
-    pickup.coinsCreditedAt = new Date();
-  }
-
-  if (
-    (previousStatus === 'completed' || previousStatus === 'paid') &&
-    status !== 'completed' &&
-    status !== 'paid' &&
-    pickup.coinsCreditedAt
-  ) {
-    await User.findByIdAndUpdate(pickup.user, {
-      $inc: { coinsBalance: -pickup.impact.coinsEarned }
-    });
-    pickup.coinsCreditedAt = null;
-  }
-
   appendActivity(pickup, {
     status,
     actorRole: 'system',
@@ -420,13 +401,6 @@ async function adminPayPickup(pickupId, adminId, note = '') {
   pickup.status = 'completed';
   pickup.payment.status = 'paid';
   pickup.payment.paidAt = new Date();
-
-  if (!pickup.coinsCreditedAt) {
-    await User.findByIdAndUpdate(pickup.user, {
-      $inc: { coinsBalance: pickup.impact.coinsEarned }
-    });
-    pickup.coinsCreditedAt = new Date();
-  }
 
   appendActivity(pickup, {
     status: 'completed',

@@ -52,17 +52,15 @@ GreenByte uses MongoDB as its primary data store. Below is an Entity Relationshi
 ```mermaid
 erDiagram
     USER ||--o{ PICKUP : "requests"
-    USER ||--o{ REWARD_REDEMPTION : "redeems"
     USER ||--o| RECYCLER_PROFILE : "has"
     PICKUP ||--o{ CATALOG_ITEM : "contains"
+    PICKUP ||--o{ CATALOG_ITEM : "contains"
     PICKUP }o--|| USER : "assigned_to (Recycler)"
-    REWARD_REDEMPTION }o--|| REWARD : "references"
     
     USER {
         ObjectId _id
         string phone "Unique"
         string role "customer | recycler | admin"
-        number coinsBalance
     }
     
     PICKUP {
@@ -82,18 +80,13 @@ erDiagram
         string unit "kg | pc"
     }
     
-    REWARD {
-        ObjectId _id
-        string name
-        number costCoins
-    }
 ```
 
 ### Core Collections
 
 #### 1. `Users`
-Stores user profiles, roles (Customer, Recycler, Admin), and reward balances.
-- **Key Fields**: `phone` (unique), `role`, `coinsBalance`, `isVerified`.
+Stores user profiles, roles (Customer, Recycler, Admin).
+- **Key Fields**: `phone` (unique), `role`, `isVerified`.
 
 #### 2. `Pickups`
 The heart of the application, tracking the lifecycle of a waste collection request.
@@ -102,9 +95,6 @@ The heart of the application, tracking the lifecycle of a waste collection reque
 #### 3. `CatalogItems`
 Defines the types of waste that can be recycled and their associated prices/units.
 - **Categories**: Plastic, Paper, Metal, E-waste, etc.
-
-#### 4. `Rewards` & `RewardRedemptions`
-Manages the gamification system where users spend "GreenByte Coins" for rewards.
 
 ---
 
@@ -120,7 +110,6 @@ The backend is organized into standard MVC-like layers: **Routes**, **Controller
 | `/pickups` | GET/POST | Create and manage pickup requests. |
 | `/recyclers` | GET/PUT | Manage recycler assignments and schedules. |
 | `/catalog` | GET | Retrieve the list of recyclable items and prices. |
-| `/rewards` | GET/POST | View rewards and process redemptions. |
 | `/admin` | GET/PUT | Administrative dashboard and user management. |
 
 ### Core Workflows
@@ -130,7 +119,7 @@ The backend is organized into standard MVC-like layers: **Routes**, **Controller
 2. **Estimation**: If complex, Admin/System provides a negotiated amount.
 3. **Assignment**: A `Recycler` is assigned (manually or automatically) to the request.
 4. **Collection**: Recycler marks as `collected` after physical pickup.
-5. **Completion**: Upon successful processing, `coins` are credited to the User.
+5. **Completion**: Upon successful processing, the request is marked as completed and archived.
 
 #### 🔒 Security & Middleware
 - **JWT / Auth Middleware**: Protects sensitive routes based on Firebase identity.

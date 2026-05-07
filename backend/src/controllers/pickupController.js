@@ -76,11 +76,23 @@ const respondNegotiation = asyncHandler(async (req, res) => {
   });
 });
 
+const updatePayment = asyncHandler(async (req, res) => {
+  const { pickupId } = req.params;
+  const { destination } = req.body;
+  const pickup = await require('../services/pickupService').updatePaymentDestination(pickupId, destination);
+
+  res.json({
+    success: true,
+    data: pickup
+  });
+});
+
 module.exports = {
   estimate,
   create,
   list,
   changeStatus,
   remove,
-  respondNegotiation
+  respondNegotiation,
+  updatePayment
 };

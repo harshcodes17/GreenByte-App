@@ -15,6 +15,24 @@ async function getCatalog() {
   }, {});
 }
 
+async function upsertCatalogItems(items) {
+  const operations = items.map(item => ({
+    updateOne: {
+      filter: { category: item.category, name: item.name },
+      update: { $set: { ...item, isActive: true } },
+      upsert: true
+    }
+  }));
+
+  return CatalogItem.bulkWrite(operations);
+}
+
+async function deleteCatalogItem(itemId) {
+  return CatalogItem.findByIdAndUpdate(itemId, { isActive: false });
+}
+
 module.exports = {
-  getCatalog
+  getCatalog,
+  upsertCatalogItems,
+  deleteCatalogItem
 };

@@ -162,7 +162,10 @@ async function createPickup(payload) {
 }
 
 async function listUserPickups(userId) {
-  const pickups = await Pickup.find({ user: userId }).sort({ createdAt: -1 }).lean();
+  const pickups = await Pickup.find({ user: userId })
+    .sort({ createdAt: -1 })
+    .populate('recyclerAssignment.recycler', 'name phone')
+    .lean();
   return pickups;
 }
 
@@ -472,6 +475,25 @@ async function adminForceDeletePickup(pickupId) {
   return { success: true };
 }
 
+async function updatePaymentDestination(pickupId, destination) {
+  const pickup = await Pickup.findById(pickupId);
+  if (!pickup) throw new ApiError(404, 'Pickup not found');
+
+  pickup.payment.destination = {
+    ...pickup.payment.destination.toObject(),
+    ...destination
+  };
+
+  appendActivity(pickup, {
+    status: pickup.status,
+    actorRole: 'customer',
+    note: 'Customer updated payment destination details'
+  });
+
+  await pickup.save();
+  return pickup;
+}
+
 module.exports = {
   estimatePickup,
   createPickup,
@@ -486,5 +508,6 @@ module.exports = {
   customerRespondNegotiation,
   adminPayPickup,
   adminAssignRecycler,
-  adminForceDeletePickup
+  adminForceDeletePickup,
+  updatePaymentDestination
 };

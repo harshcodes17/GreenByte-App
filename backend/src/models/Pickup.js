@@ -207,6 +207,14 @@ const pickupSchema = new mongoose.Schema(
         type: String,
         default: 'bank_transfer'
       },
+      destination: {
+        type: { type: String, enum: ['upi', 'bank'], default: 'upi' },
+        upiId: { type: String, default: '' },
+        bankName: { type: String, default: '' },
+        accountNumber: { type: String, default: '' },
+        ifscCode: { type: String, default: '' },
+        accountHolderName: { type: String, default: '' }
+      },
       paidAt: {
         type: Date,
         default: null

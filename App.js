@@ -101,6 +101,20 @@ const ROLE_OPTIONS = [
   { value: 'admin', label: 'Admin' }
 ];
 
+const STAFF_ROLE_OPTIONS = [
+  { value: 'recycler', label: 'Recycler' },
+  { value: 'admin', label: 'Admin' }
+];
+
+const LOCATIONS = [
+  { label: 'Mumbai, MH', value: 'mumbai' },
+  { label: 'Pune, MH', value: 'pune' },
+  { label: 'Bangalore, KA', value: 'bangalore' },
+  { label: 'Delhi, NCR', value: 'delhi' },
+  { label: 'Hyderabad, TS', value: 'hyderabad' },
+  { label: 'Chennai, TN', value: 'chennai' }
+];
+
 // Replace localhost with your machine LAN IP when testing on a physical device.
 const API_BASE_URL = 'http://localhost:4000/api/v1';
 const DEFAULT_COUNTRY_CODE = '91';
@@ -354,8 +368,10 @@ function mapBackendPickupToFrontend(pickup) {
     pricing: {
       estimatedAmount: pickup.pricing?.estimatedAmount || 0,
       negotiatedAmount: pickup.pricing?.negotiatedAmount || null,
-      acceptedByUser: pickup.pricing?.acceptedByUser ?? true
+      acceptedByUser: pickup.pricing?.acceptedByUser !== false,
+      acceptedAt: pickup.pricing?.acceptedAt || null
     },
+    paymentDestination: pickup.payment?.destination || null,
     pickupDetails: {
       mode: pickup.requestMode || 'pickup',
       date: pickup.schedule?.dateLabel || '',
@@ -829,29 +845,6 @@ function RegisterScreen({ navigation }) {
             compact
           />
 
-          <Text style={[styles.label, { color: theme.text }]}>Role</Text>
-          <View style={styles.roleSelectorRow}>
-            {ROLE_OPTIONS.map((option) => (
-              <Pressable
-                key={option.value}
-                style={[
-                  styles.roleChip, 
-                  role === option.value && styles.roleChipActive,
-                  isDarkMode && role !== option.value && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }
-                ]}
-                onPress={() => setRole(option.value)}
-              >
-                <Text style={[
-                  styles.roleChipText, 
-                  role === option.value && styles.roleChipTextActive,
-                  isDarkMode && role !== option.value && { color: theme.muted }
-                ]}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
           <Text style={[styles.label, { color: theme.text }]}>Full Name</Text>
           <TextInput
             value={name}
@@ -927,7 +920,7 @@ function LoginScreen({ navigation, route }) {
 
   const [phone, setPhone] = useState(prefilledPhone);
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState(prefilledRole);
+  const [role, setRole] = useState('customer'); // Default to customer
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -969,14 +962,18 @@ function LoginScreen({ navigation, route }) {
     <ScreenShell isLoginScreen={true}>
       <View style={styles.containerFlex}>
         {/* Standardized Emerald Glass Cards with 85% Opacity */}
-        <View style={{ marginBottom: 20, alignItems: 'center', backgroundColor: 'rgba(5, 31, 26, 0.85)', padding: 22, borderRadius: 24, borderBottomWidth: 2, borderBottomColor: '#20C997', width: '100%' }}>
+        <Pressable 
+          onLongPress={() => navigation.navigate('StaffLogin')}
+          delayLongPress={2000}
+          style={{ marginBottom: 20, alignItems: 'center', backgroundColor: 'rgba(5, 31, 26, 0.85)', padding: 22, borderRadius: 24, borderBottomWidth: 2, borderBottomColor: '#20C997', width: '100%' }}
+        >
           <Text style={{ fontSize: 36, color: '#FFFFFF', fontFamily: 'Outfit-Black', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 15, textAlign: 'center' }}>
             Welcome to GreenByte
           </Text>
           <Text style={{ color: '#20C997', fontSize: 14, fontFamily: 'Outfit-Bold', letterSpacing: 2.5, marginTop: 10, textTransform: 'uppercase', textAlign: 'center' }}>
             Powered by Pruthvi Zero Waste Foundation
           </Text>
-        </View>
+        </Pressable>
 
         <View style={[styles.authCard, styles.glassCard, { backgroundColor: 'rgba(5, 31, 26, 0.85)', borderColor: 'rgba(255,255,255,0.1)', borderBottomWidth: 2, borderBottomColor: '#20C997' }]}>
 
@@ -988,28 +985,6 @@ function LoginScreen({ navigation, route }) {
             centered
             compact
           />
-
-          <Text style={[styles.label, { color: '#FFFFFF', opacity: 0.9 }]}>Role</Text>
-          <View style={styles.roleSelectorRow}>
-            {ROLE_OPTIONS.map((option) => (
-              <Pressable
-                key={option.value}
-                style={[
-                  styles.roleChip, 
-                  role === option.value && styles.roleChipActive,
-                  { backgroundColor: role === option.value ? '#20C997' : 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' }
-                ]}
-                onPress={() => setRole(option.value)}
-              >
-                <Text style={[
-                  styles.roleChipText, 
-                  { color: role === option.value ? '#FFFFFF' : 'rgba(255,255,255,0.7)' }
-                ]}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
 
           <Text style={[styles.label, { color: '#FFFFFF', opacity: 0.9, marginTop: 15 }]}>Phone Number</Text>
           <TextInput
@@ -1054,6 +1029,143 @@ function LoginScreen({ navigation, route }) {
           >
             <Text style={{ color: '#20C997', fontWeight: '800', fontSize: 15 }}>
               Need an account? Register first
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </ScreenShell>
+  );
+}
+
+function StaffLoginScreen({ navigation }) {
+  const showToast = useToast();
+  const { setUser, setPickupHistory } = useApp();
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('recycler');
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const onContinue = async () => {
+    setErrorMessage('');
+    const cleaned = normalizePhoneDigits(phone);
+
+    if (cleaned.length < 10) {
+      setErrorMessage('Enter a valid mobile number.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setErrorMessage('Enter the password provided via email.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const response = await apiRequest('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ phone: cleaned, role, password })
+      });
+      
+      const persistedPickups = await loadPickupHistoryForUser(response.data?._id);
+      setUser(response.data);
+      setPickupHistory(persistedPickups);
+      
+      showToast(`Welcome Staff, ${response.data.name}!`);
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ScreenShell isLoginScreen={true}>
+      <View style={styles.containerFlex}>
+        <View style={{ marginBottom: 20, alignItems: 'center', backgroundColor: 'rgba(5, 31, 26, 0.85)', padding: 22, borderRadius: 24, borderBottomWidth: 2, borderBottomColor: '#F9A826', width: '100%' }}>
+          <Text style={{ fontSize: 32, color: '#FFFFFF', fontFamily: 'Outfit-Black', textAlign: 'center' }}>
+            Staff Portal
+          </Text>
+          <Text style={{ color: '#F9A826', fontSize: 14, fontFamily: 'Outfit-Bold', letterSpacing: 2.5, marginTop: 10, textTransform: 'uppercase', textAlign: 'center' }}>
+            Authorized Personnel Only
+          </Text>
+        </View>
+
+        <View style={[styles.authCard, styles.glassCard, { backgroundColor: 'rgba(5, 31, 26, 0.85)', borderColor: 'rgba(255,255,255,0.1)', borderBottomWidth: 2, borderBottomColor: '#F9A826' }]}>
+          <ScreenHeader
+            title="Staff Login"
+            titleStyle={{ color: '#FFFFFF' }}
+            subtitle="Access restricted to Admins and Recyclers"
+            subtitleStyle={{ color: 'rgba(255,255,255,0.7)' }}
+            centered
+            compact
+          />
+
+          <Text style={[styles.label, { color: '#FFFFFF', opacity: 0.9 }]}>Staff Role</Text>
+          <View style={styles.roleSelectorRow}>
+            {STAFF_ROLE_OPTIONS.map((option) => (
+              <Pressable
+                key={option.value}
+                style={[
+                  styles.roleChip, 
+                  role === option.value && styles.roleChipActive,
+                  { backgroundColor: role === option.value ? '#F9A826' : 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' }
+                ]}
+                onPress={() => setRole(option.value)}
+              >
+                <Text style={[
+                  styles.roleChipText, 
+                  { color: role === option.value ? '#FFFFFF' : 'rgba(255,255,255,0.7)' }
+                ]}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={[styles.label, { color: '#FFFFFF', opacity: 0.9, marginTop: 15 }]}>Phone Number</Text>
+          <TextInput
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            style={[styles.input, { backgroundColor: 'rgba(255, 255, 255, 0.95)', color: '#051F1A' }]}
+            placeholder="Authorized mobile number"
+            placeholderTextColor="#666"
+          />
+
+          <Text style={[styles.label, { color: '#FFFFFF', opacity: 0.9, marginTop: 15 }]}>Emailed Password</Text>
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            style={[styles.input, { backgroundColor: 'rgba(255, 255, 255, 0.95)', color: '#051F1A' }]}
+            placeholder="Enter password from email"
+            placeholderTextColor="#666"
+            secureTextEntry
+          />
+
+          {errorMessage ? (
+            <View style={{ backgroundColor: 'rgba(255, 100, 100, 0.15)', padding: 12, borderRadius: 10, marginVertical: 14 }}>
+              <Text style={{ color: '#FF8080', fontSize: 13, fontWeight: '600' }}>{errorMessage}</Text>
+            </View>
+          ) : null}
+
+          <Pressable 
+            style={[styles.primaryButton, { marginTop: 25, backgroundColor: '#F9A826' }]} 
+            onPress={onContinue}
+            disabled={submitting}
+          >
+            <Text style={styles.primaryButtonText}>
+              {submitting ? 'Authenticating...' : 'Access Portal'}
+            </Text>
+          </Pressable>
+
+          <Pressable 
+            style={{ marginTop: 20, alignItems: 'center' }}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>
+              Return to Customer Login
             </Text>
           </Pressable>
         </View>
@@ -1372,18 +1484,80 @@ function HomeScreen({ navigation }) {
           </Pressable>
         ) : null}
 
+        <View style={[
+          styles.listCard, 
+          { 
+            backgroundColor: isDarkMode ? 'rgba(32, 201, 151, 0.05)' : 'rgba(32, 201, 151, 0.08)', 
+            borderColor: 'rgba(32, 201, 151, 0.2)', 
+            borderWidth: 1.5,
+            marginBottom: 24,
+            overflow: 'hidden',
+            padding: 20
+          }
+        ]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+            <View style={{ 
+              width: 48, 
+              height: 48, 
+              borderRadius: 24, 
+              backgroundColor: '#20C997', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              shadowColor: '#20C997',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 5
+            }}>
+              <MaterialCommunityIcons name="earth" size={28} color="#FFF" />
+            </View>
+            <View>
+              <Text style={{ fontSize: 19, fontWeight: '800', color: theme.text, fontFamily: 'Outfit-Bold' }}>Climate Action</Text>
+              <Text style={{ color: theme.muted, fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>GreenByte Mission</Text>
+            </View>
+          </View>
+          
+          <Text style={{ color: theme.text, fontSize: 15, lineHeight: 22, marginBottom: 20, opacity: 0.85 }}>
+            Recycling a single laptop saves enough energy to power a home for 350 days. Join our global mission to reduce e-waste!
+          </Text>
+
+          <Pressable 
+            style={({ pressed }) => [
+              {
+                backgroundColor: theme.primary,
+                borderRadius: 16,
+                paddingVertical: 14,
+                alignItems: 'center',
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 10,
+                opacity: pressed ? 0.9 : 1,
+                shadowColor: theme.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 6,
+                elevation: 3
+              }
+            ]}
+            onPress={() => navigation.navigate('EnvironmentalImpact')}
+          >
+            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 15 }}>Read Foundation Paper</Text>
+            <MaterialCommunityIcons name="arrow-right-circle-outline" size={20} color="#FFF" />
+          </Pressable>
+        </View>
+
       </ScrollView>
     </ScreenShell>
   );
 }
 
 function SelectEWasteScreen({ navigation }) {
-  const { selectedItems, setSelectedItems, isDarkMode } = useApp();
+  const { selectedItems, setSelectedItems, priceCatalog, isDarkMode } = useApp();
   const theme = useTheme();
-  const categories = Object.keys(PRICE_CATALOG);
+  const categories = Object.keys(priceCatalog);
 
   const [category, setCategory] = useState(categories[0]);
-  const [itemName, setItemName] = useState(PRICE_CATALOG[categories[0]][0].name);
+  const [itemName, setItemName] = useState(priceCatalog[categories[0]][0].name);
   const [quantity, setQuantity] = useState('1');
   const [weightKg, setWeightKg] = useState('');
   const [condition, setCondition] = useState('');
@@ -1436,12 +1610,12 @@ function SelectEWasteScreen({ navigation }) {
     }
   };
 
-  const itemOptions = PRICE_CATALOG[category];
+  const itemOptions = priceCatalog[category];
   const selectedMeta = itemOptions.find((x) => x.name === itemName);
 
   const onCategoryChange = (next) => {
     setCategory(next);
-    setItemName(PRICE_CATALOG[next][0].name);
+    setItemName(priceCatalog[next][0].name);
   };
 
   const resetForm = () => {
@@ -1960,15 +2134,14 @@ function OrderSummaryScreen({ navigation }) {
           </View>
         ) : aiResult ? (
           <View style={[styles.listCard, { backgroundColor: isDarkMode ? 'rgba(20, 80, 70, 0.2)' : '#F0F7F4', borderLeftWidth: 4, borderLeftColor: theme.primary, borderColor: 'rgba(255,255,255,0.1)' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <MaterialCommunityIcons name="auto-fix" size={20} color={theme.primary} />
-              <Text style={[styles.cardTitle, { marginBottom: 0, marginLeft: 8, color: theme.text }]}>AI Scrap Estimation</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={[styles.totalLabel, { color: theme.text }]}>Total Estimated Value</Text>
+              <View style={{ backgroundColor: 'rgba(32, 201, 151, 0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <MaterialCommunityIcons name="robot-confused-outline" size={14} color="#20C997" />
+                <Text style={{ color: '#20C997', fontSize: 10, fontWeight: '900' }}>SMART AI VALUATION</Text>
+              </View>
             </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: theme.text }]}>Final Estimated Value</Text>
-              <Text style={[styles.totalText, { color: theme.primary }]}>₹{aiResult.totalEstimate}</Text>
-            </View>
+            <Text style={[styles.totalValue, { color: theme.primary }]}>₹{aiResult.totalEstimate}</Text>
             
             {aiResult.estimationReasoning ? (
               <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#E0E0E0' }}>
@@ -2401,6 +2574,725 @@ function RecyclerAssignedScreen({ navigation }) {
   );
 }
 
+function RazorpayModal({ visible, amount, onComplete, onClose }) {
+  const { isDarkMode } = useApp();
+  const theme = useTheme();
+  const [processing, setProcessing] = useState(false);
+
+  const handlePay = () => {
+    setProcessing(true);
+    setTimeout(() => {
+      setProcessing(false);
+      onComplete();
+    }, 2000);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+        <View style={{ backgroundColor: isDarkMode ? '#1A1A1A' : '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <Image 
+              source={{ uri: 'https://instamojo-cdn2.s3.amazonaws.com/razorpay-logo.png' }} 
+              style={{ width: 120, height: 30 }} 
+              resizeMode="contain" 
+            />
+            <Pressable onPress={onClose}>
+              <MaterialCommunityIcons name="close" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+
+          <Text style={{ fontSize: 14, color: theme.muted, marginBottom: 4 }}>PAYING TO</Text>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 20 }}>GreenByte Foundation</Text>
+
+          <View style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F5F9F7', padding: 16, borderRadius: 12, marginBottom: 24 }}>
+            <Text style={{ fontSize: 13, color: theme.muted, marginBottom: 4 }}>Amount to Receive</Text>
+            <Text style={{ fontSize: 32, fontWeight: '900', color: theme.primary }}>₹{amount}</Text>
+          </View>
+
+          <View style={{ gap: 12, marginBottom: 24 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 1, borderColor: theme.border, borderRadius: 12 }}>
+              <MaterialCommunityIcons name="bank" size={24} color={theme.primary} />
+              <View>
+                <Text style={{ fontWeight: '600', color: theme.text }}>Bank Account</Text>
+                <Text style={{ fontSize: 12, color: theme.muted }}>Verified for instant settlement</Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 1, borderColor: theme.border, borderRadius: 12 }}>
+              <MaterialCommunityIcons name="qrcode-scan" size={24} color={theme.primary} />
+              <View>
+                <Text style={{ fontWeight: '600', color: theme.text }}>UPI Intent</Text>
+                <Text style={{ fontSize: 12, color: theme.muted }}>Google Pay, PhonePe, Paytm</Text>
+              </View>
+            </View>
+          </View>
+
+          <Pressable 
+            style={[styles.primaryButton, { backgroundColor: '#3395FF', height: 56 }]} 
+            onPress={handlePay}
+            disabled={processing}
+          >
+            {processing ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Collect Payment via Razorpay</Text>
+            )}
+          </Pressable>
+
+          <Text style={{ textAlign: 'center', marginTop: 16, fontSize: 11, color: theme.muted }}>
+            Secured by Razorpay. Trusted by 10M+ businesses.
+          </Text>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function ReportCenterModal({ visible, onClose }) {
+  const showToast = useToast();
+  const { user, pickupHistory, isDarkMode } = useApp();
+  const theme = useTheme();
+  const [startDate, setStartDate] = useState('2026-04-01');
+  const [endDate, setEndDate] = useState('2026-04-30');
+  const [generating, setGenerating] = useState(false);
+
+  const startRef = useRef(null);
+  const endRef = useRef(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && visible) {
+      setTimeout(() => {
+        const s = document.getElementById('report-start-date');
+        const e = document.getElementById('report-end-date');
+        if (s) s.type = 'date';
+        if (e) e.type = 'date';
+      }, 100);
+    }
+  }, [visible]);
+
+  const handleGenerate = () => {
+    setGenerating(true);
+    setTimeout(() => {
+      setGenerating(false);
+      
+      const sMs = new Date(startDate).getTime();
+      const eMs = new Date(endDate).getTime() + 86399999;
+
+      const filteredPickups = pickupHistory.filter(p => {
+        const pMs = getPickupCreatedAtMs(p);
+        return pMs >= sMs && pMs <= eMs;
+      });
+
+      if (filteredPickups.length === 0) {
+        showToast('No pickups found for the selected date range.', 'error');
+        return;
+      }
+
+      // Calculate categorization
+      const categoryTotals = {};
+      filteredPickups.forEach(p => {
+        p.items.forEach(item => {
+          const cat = item.category || 'Other';
+          categoryTotals[cat] = (categoryTotals[cat] || 0) + (item.quantity || 1);
+        });
+      });
+
+      const totalValue = filteredPickups.reduce((sum, p) => sum + (p.totalEstimate || 0), 0);
+      const co2Saved = (totalValue * 0.45).toFixed(1);
+
+      // Create a professional HTML report for printing to PDF
+      const reportHtml = `
+        <html>
+          <head>
+            <title>GreenByte Sustainability Report</title>
+            <style>
+              body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 40px; color: #1A3C34; line-height: 1.6; }
+              .header { border-bottom: 2px solid #20C997; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+              .logo { font-size: 28px; font-weight: 800; color: #20C997; }
+              .title { font-size: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+              .meta { margin-bottom: 40px; background: #F8FAF9; padding: 20px; borderRadius: 12px; }
+              .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 40px; }
+              .stat-box { border: 1px solid #E0EAE5; padding: 15px; border-radius: 8px; text-align: center; }
+              .stat-val { font-size: 24px; font-weight: 700; color: #20C997; }
+              .stat-lbl { font-size: 11px; text-transform: uppercase; color: #6C8E84; margin-top: 5px; }
+              h3 { border-left: 4px solid #20C997; padding-left: 10px; margin-top: 40px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+              th { text-align: left; background: #F1F6F4; padding: 12px; font-size: 13px; }
+              td { padding: 12px; border-bottom: 1px solid #E0EAE5; font-size: 13px; }
+              .footer { margin-top: 60px; font-size: 12px; color: #91A79F; text-align: center; border-top: 1px solid #E0EAE5; padding-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div class="logo">GreenByte</div>
+              <div class="title">Sustainability Statement</div>
+            </div>
+
+            <div class="meta">
+              <strong>User:</strong> ${user.name}<br/>
+              <strong>Period:</strong> ${startDate} to ${endDate}<br/>
+              <strong>Generated:</strong> ${new Date().toLocaleString()}
+            </div>
+
+            <div class="grid">
+              <div class="stat-box">
+                <div class="stat-val">${filteredPickups.length}</div>
+                <div class="stat-lbl">Pickups Made</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-val">₹${totalValue}</div>
+                <div class="stat-lbl">Estimated Value</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-val">${co2Saved}kg</div>
+                <div class="stat-lbl">CO2 Offset</div>
+              </div>
+            </div>
+
+            <h3>Recycling Breakdown</h3>
+            <table>
+              <thead>
+                <tr><th>Category</th><th>Items Processed</th><th>Impact Weight</th></tr>
+              </thead>
+              <tbody>
+                ${Object.entries(categoryTotals).map(([cat, count]) => `
+                  <tr>
+                    <td>${cat}</td>
+                    <td>${count} units</td>
+                    <td>${(count * 1.2).toFixed(1)} Impact Points</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+
+            <h3>Detailed Activity Log</h3>
+            <table>
+              <thead>
+                <tr><th>Date</th><th>Tracking ID</th><th>Status</th><th>Value</th></tr>
+              </thead>
+              <tbody>
+                ${filteredPickups.map(p => `
+                  <tr>
+                    <td>${p.createdAt?.split('T')[0]}</td>
+                    <td>${p.trackingId || p.id.slice(-8).toUpperCase()}</td>
+                    <td>${REQUEST_STATUS_META[p.status]?.label || p.status}</td>
+                    <td>₹${p.totalEstimate}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+
+            <div class="footer">
+              This is a digitally generated sustainability certificate from GreenByte.<br/>
+              Thank you for contributing to a circular economy.
+            </div>
+
+            <script>
+              window.onload = () => {
+                window.print();
+                // Close window after printing/cancelling if it was opened in a new tab
+                // setTimeout(() => window.close(), 500); 
+              };
+            </script>
+          </body>
+        </html>
+      `;
+
+      const win = window.open('', '_blank');
+      win.document.write(reportHtml);
+      win.document.close();
+
+      showToast(`Professional report generated for ${filteredPickups.length} pickups.`);
+      onClose();
+    }, 2000);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={[styles.modalCard, { width: '90%', maxWidth: 400 }]}>
+          <Text style={styles.modalTitle}>Generate Report</Text>
+          <Text style={styles.modalSubtitle}>Select the date range for your monthly recycling summary.</Text>
+
+          <Text style={[styles.label, { marginTop: 16 }]}>From Date</Text>
+          <View style={{ position: 'relative' }}>
+            <TextInput 
+              nativeID="report-start-date"
+              value={startDate} 
+              onChangeText={setStartDate} 
+              style={[styles.input, { paddingRight: 40 }]} 
+              placeholder="YYYY-MM-DD" 
+            />
+            <MaterialCommunityIcons 
+              name="calendar" 
+              size={20} 
+              color={theme.primary} 
+              style={{ position: 'absolute', right: 12, top: 12 }} 
+              pointerEvents="none"
+            />
+          </View>
+
+          <Text style={[styles.label]}>To Date</Text>
+          <View style={{ position: 'relative' }}>
+            <TextInput 
+              nativeID="report-end-date"
+              value={endDate} 
+              onChangeText={setEndDate} 
+              style={[styles.input, { paddingRight: 40 }]} 
+              placeholder="YYYY-MM-DD" 
+            />
+            <MaterialCommunityIcons 
+              name="calendar" 
+              size={20} 
+              color={theme.primary} 
+              style={{ position: 'absolute', right: 12, top: 12 }} 
+              pointerEvents="none"
+            />
+          </View>
+
+          <Pressable 
+            style={[styles.primaryButton, { marginTop: 24 }]} 
+            onPress={handleGenerate}
+            disabled={generating}
+          >
+            {generating ? <ActivityIndicator color="#FFF" /> : <Text style={styles.primaryButtonText}>Download PDF Report</Text>}
+          </Pressable>
+
+          <Pressable style={[styles.secondaryButton, { marginTop: 12 }]} onPress={onClose}>
+            <Text style={styles.secondaryButtonText}>Cancel</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function PayoutDetailsModal({ visible, pickupId, onComplete, onClose }) {
+  const { isDarkMode } = useApp();
+  const theme = useTheme();
+  const [type, setType] = useState('upi');
+  const [upiId, setUpiId] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accNo, setAccNo] = useState('');
+  const [ifsc, setIfsc] = useState('');
+  const [holder, setHolder] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    try {
+      if (type === 'upi' && !upiId.includes('@')) {
+        alert('Please enter a valid UPI ID');
+        return;
+      }
+      if (type === 'bank' && (!accNo || !ifsc || !holder)) {
+        alert('Please fill in all bank details');
+        return;
+      }
+
+      setSubmitting(true);
+      const destination = type === 'upi' 
+        ? { type: 'upi', upiId: upiId.trim() } 
+        : { 
+            type: 'bank', 
+            bankName: bankName.trim(), 
+            accountNumber: accNo.trim(), 
+            ifscCode: ifsc.trim().toUpperCase(), 
+            accountHolderName: holder.trim() 
+          };
+      
+      await apiRequest(`/pickups/${pickupId}/payment`, {
+        method: 'PATCH',
+        body: JSON.stringify({ destination })
+      });
+      onComplete();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={[styles.modalCard, { width: '90%', maxWidth: 420 }]}>
+          <Text style={styles.modalTitle}>Payout Details</Text>
+          <Text style={styles.modalSubtitle}>Where should we send your recycling reward?</Text>
+
+          <View style={{ flexDirection: 'row', gap: 10, marginVertical: 20 }}>
+            <Pressable 
+              onPress={() => setType('upi')}
+              style={({ pressed }) => [
+                { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: type === 'upi' ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'), backgroundColor: type === 'upi' ? (isDarkMode ? 'rgba(32, 201, 151, 0.2)' : '#E7F6EF') : 'transparent' },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <MaterialCommunityIcons name="qrcode-scan" size={20} color={type === 'upi' ? theme.primary : theme.muted} />
+              <Text style={{ fontWeight: '700', color: type === 'upi' ? theme.primary : theme.muted, marginTop: 4, fontSize: 13 }}>UPI</Text>
+            </Pressable>
+            <Pressable 
+              onPress={() => setType('bank')}
+              style={({ pressed }) => [
+                { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: type === 'bank' ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'), backgroundColor: type === 'bank' ? (isDarkMode ? 'rgba(32, 201, 151, 0.2)' : '#E7F6EF') : 'transparent' },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <MaterialCommunityIcons name="bank-outline" size={20} color={type === 'bank' ? theme.primary : theme.muted} />
+              <Text style={{ fontWeight: '700', color: type === 'bank' ? theme.primary : theme.muted, marginTop: 4, fontSize: 13 }}>Bank</Text>
+            </Pressable>
+          </View>
+
+          <View style={{ gap: 14 }}>
+            {type === 'upi' ? (
+              <View>
+                <Text style={[styles.label, { marginTop: 0 }]}>UPI ID</Text>
+                <TextInput 
+                  value={upiId} 
+                  onChangeText={setUpiId} 
+                  style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0,0,0,0.3)', color: '#FFF' }]} 
+                  placeholder="username@bank"
+                  placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.3)' : '#91A79F'}
+                  autoCapitalize="none"
+                />
+              </View>
+            ) : (
+              <>
+                 <View>
+                   <Text style={[styles.label, { marginTop: 0 }]}>Account Holder Name</Text>
+                   <TextInput value={holder} onChangeText={setHolder} style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0,0,0,0.3)', color: '#FFF' }]} placeholder="As per bank records" placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.3)' : '#91A79F'} />
+                 </View>
+                 <View>
+                   <Text style={[styles.label, { marginTop: 0 }]}>Account Number</Text>
+                   <TextInput value={accNo} onChangeText={setAccNo} style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0,0,0,0.3)', color: '#FFF' }]} placeholder="0000 0000 0000" placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.3)' : '#91A79F'} keyboardType="numeric" />
+                 </View>
+                 <View>
+                   <Text style={[styles.label, { marginTop: 0 }]}>IFSC Code</Text>
+                   <TextInput value={ifsc} onChangeText={setIfsc} style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0,0,0,0.3)', color: '#FFF' }]} placeholder="SBIN0000000" placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.3)' : '#91A79F'} autoCapitalize="characters" />
+                 </View>
+              </>
+            )}
+          </View>
+
+          <Pressable 
+            style={[styles.primaryButton, { marginTop: 30 }]} 
+            onPress={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={styles.primaryButtonText}>Save & Request Payment</Text>}
+          </Pressable>
+          <Pressable style={[styles.secondaryButton, { marginTop: 12 }]} onPress={onClose}>
+            <Text style={styles.secondaryButtonText}>Cancel</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function EnvironmentalImpactScreen({ navigation }) {
+  const { isDarkMode } = useApp();
+  const theme = useTheme();
+
+  return (
+    <ScreenShell>
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: 60 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+          <Pressable 
+            onPress={() => navigation.goBack()}
+            style={({ pressed }) => ({
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+              opacity: pressed ? 0.7 : 1
+            })}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color={theme.primary} />
+          </Pressable>
+          <View style={{ marginLeft: 16 }}>
+            <Text style={{ fontSize: 28, fontWeight: '900', color: theme.text }}>Eco Education</Text>
+            <Text style={{ fontSize: 13, color: theme.muted }}>Protecting our planet together</Text>
+          </View>
+        </View>
+
+        <View style={[styles.listCard, { backgroundColor: isDarkMode ? 'rgba(32, 201, 151, 0.1)' : '#E7F6EF', borderColor: '#20C997' }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>The Global Warming Crisis</Text>
+          <Text style={{ color: theme.muted, lineHeight: 22, fontSize: 14 }}>
+            Global warming is the unusually rapid increase in Earth’s average surface temperature over the past century primarily due to the greenhouse gases released as people burn fossil fuels. 
+            {"\n\n"}
+            E-waste is one of the fastest-growing waste streams. When improperly disposed of, it releases toxic chemicals into the soil and air, contributing significantly to environmental degradation.
+          </Text>
+        </View>
+
+        <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Our Foundation Mission</Text>
+          <Text style={{ color: theme.muted, lineHeight: 22, fontSize: 14 }}>
+            The GreenByte Foundation is committed to creating a circular economy where electronic waste is no longer a burden but a resource. 
+            {"\n\n"}
+            By using our platform, you are directly helping to:
+            {"\n"}• Divert heavy metals from landfills
+            {"\n"}• Reduce the need for raw material mining
+            {"\n"}• Lower carbon emissions from manufacturing
+          </Text>
+        </View>
+
+        <Pressable 
+          style={[styles.primaryButton, { marginTop: 12 }]}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.primaryButtonText}>I Understand, Back to Dashboard</Text>
+        </Pressable>
+      </ScrollView>
+    </ScreenShell>
+  );
+}
+
+function ManageCatalogScreen({ navigation }) {
+  const showToast = useToast();
+  const { priceCatalog, setPriceCatalog, refreshCatalog, isDarkMode } = useApp();
+  const theme = useTheme();
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [saving, setSaving] = useState(false);
+  
+  // New Item States
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newCat, setNewCat] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newPrice, setNewPrice] = useState('');
+  const [newUnit, setNewUnit] = useState('pc');
+
+  const updatePrice = (category, itemName, newPrice) => {
+    const updated = { ...priceCatalog };
+    const itemIdx = updated[category].findIndex(i => i.name === itemName);
+    if (itemIdx > -1) {
+      updated[category][itemIdx].price = parseFloat(newPrice) || 0;
+      setPriceCatalog(updated);
+    }
+  };
+
+  const onAddNewItem = async () => {
+    if (!newCat || !newName || !newPrice) {
+      showToast('Please fill all fields', 'error');
+      return;
+    }
+    
+    try {
+      setSaving(true);
+      const item = {
+        name: newName,
+        price: parseFloat(newPrice),
+        unit: newUnit,
+        category: newCat,
+        approximateWeightKg: newUnit === 'kg' ? 1 : 0.5
+      };
+
+      await apiRequest('/catalog', {
+        method: 'POST',
+        body: JSON.stringify({ items: [item] })
+      });
+
+      await refreshCatalog();
+
+      setShowAddModal(false);
+      setNewName('');
+      setNewPrice('');
+      showToast(`Successfully added ${newName} to the global database.`);
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onDeleteItem = async (item) => {
+    if (!item._id) {
+      showToast('Cannot delete newly added items before syncing.', 'warning');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await apiRequest(`/catalog/${item._id}`, {
+        method: 'DELETE'
+      });
+
+      await refreshCatalog();
+
+      showToast(`Removed ${item.name} from the catalog.`);
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onGlobalSave = async () => {
+    try {
+      setSaving(true);
+      // Flatten catalog for backend
+      const items = Object.values(priceCatalog).flat();
+      
+      await apiRequest('/catalog', {
+        method: 'POST',
+        body: JSON.stringify({ items })
+      });
+
+      await refreshCatalog();
+      showToast('Global database updated successfully.');
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ScreenShell>
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: 60 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+          <Pressable 
+            onPress={() => navigation.goBack()}
+            style={({ pressed }) => ({
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+              opacity: pressed ? 0.7 : 1
+            })}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color={theme.primary} />
+          </Pressable>
+          <View style={{ marginLeft: 16 }}>
+            <Text style={{ fontSize: 28, fontWeight: '900', color: theme.text }}>Admin Catalog</Text>
+            <Text style={{ fontSize: 13, color: theme.muted }}>Global price control center</Text>
+          </View>
+        </View>
+
+        <Pressable 
+          style={[styles.secondaryButton, { marginBottom: 16, borderStyle: 'dashed' }]}
+          onPress={() => {
+            setNewCat('');
+            setShowAddModal(true);
+          }}
+        >
+          <MaterialCommunityIcons name="plus-circle-outline" size={20} color={theme.primary} />
+          <Text style={[styles.secondaryButtonText, { marginLeft: 8 }]}>Add New Product Category</Text>
+        </Pressable>
+
+        {Object.keys(priceCatalog).map(cat => (
+          <View key={cat} style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={[styles.cardTitle, { marginBottom: 0, color: theme.text }]}>{cat}</Text>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <Pressable onPress={() => {
+                  setNewCat(cat);
+                  setShowAddModal(true);
+                }}>
+                  <MaterialCommunityIcons name="plus" size={24} color={theme.primary} />
+                </Pressable>
+                <Pressable onPress={() => setEditingCategory(editingCategory === cat ? null : cat)}>
+                  <MaterialCommunityIcons name={editingCategory === cat ? "chevron-up" : "chevron-down"} size={24} color={theme.primary} />
+                </Pressable>
+              </View>
+            </View>
+
+            {editingCategory === cat && priceCatalog[cat].map(item => (
+              <View key={item.name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderTopWidth: 1, borderTopColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F0F0F0' }}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Pressable onPress={() => onDeleteItem(item)}>
+                    <MaterialCommunityIcons name="trash-can-outline" size={18} color="#FF5252" style={{ opacity: 0.8 }} />
+                  </Pressable>
+                  <Text style={{ color: theme.text }}>{item.name}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ color: theme.muted }}>₹</Text>
+                  <TextInput 
+                    defaultValue={String(item.price)}
+                    keyboardType="numeric"
+                    style={{ width: 60, padding: 4, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#F5F5F5', color: theme.text, borderRadius: 4, textAlign: 'right' }}
+                    onEndEditing={(e) => updatePrice(cat, item.name, e.nativeEvent.text)}
+                  />
+                  <Text style={{ color: theme.muted, width: 25 }}>/{item.unit}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        ))}
+
+        <Pressable 
+          style={[styles.primaryButton, { marginTop: 12, backgroundColor: theme.primary }, saving && styles.buttonDisabled]}
+          onPress={onGlobalSave}
+          disabled={saving}
+        >
+          <Text style={styles.primaryButtonText}>{saving ? 'Updating Database...' : 'Sync Price Changes'}</Text>
+        </Pressable>
+
+        <Modal visible={showAddModal} transparent animationType="fade">
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.modalCard, { width: '90%', maxWidth: 400 }]}>
+              <Text style={styles.modalTitle}>Add New Item</Text>
+              
+              <Text style={styles.label}>Category</Text>
+              <TextInput 
+                value={newCat} 
+                onChangeText={setNewCat} 
+                style={styles.input} 
+                placeholder="e.g. IT Peripherals" 
+              />
+
+              <Text style={styles.label}>Item Name</Text>
+              <TextInput 
+                value={newName} 
+                onChangeText={setNewName} 
+                style={styles.input} 
+                placeholder="e.g. Mechanical Keyboard" 
+              />
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 2 }}>
+                  <Text style={styles.label}>Price (₹)</Text>
+                  <TextInput 
+                    value={newPrice} 
+                    onChangeText={setNewPrice} 
+                    style={styles.input} 
+                    keyboardType="numeric" 
+                    placeholder="0.00" 
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Unit</Text>
+                  <Pressable 
+                    style={[styles.input, { justifyContent: 'center' }]}
+                    onPress={() => setNewUnit(newUnit === 'pc' ? 'kg' : 'pc')}
+                  >
+                    <Text style={{ color: theme.text }}>{newUnit === 'pc' ? 'Per Piece' : 'Per KG'}</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <Pressable style={[styles.primaryButton, { marginTop: 24 }]} onPress={onAddNewItem} disabled={saving}>
+                <Text style={styles.primaryButtonText}>{saving ? 'Adding...' : 'Add Item'}</Text>
+              </Pressable>
+              
+              <Pressable style={[styles.secondaryButton, { marginTop: 12 }]} onPress={() => setShowAddModal(false)}>
+                <Text style={styles.secondaryButtonText}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      </ScrollView>
+    </ScreenShell>
+  );
+}
+
 function AdminOverviewScreen({ navigation }) {
   const { pickupHistory, setPickupHistory, isDarkMode } = useApp();
   const theme = useTheme();
@@ -2445,46 +3337,128 @@ function AdminOverviewScreen({ navigation }) {
             <Text style={[styles.metricLabel, { color: theme.muted }]}>Completed</Text>
           </View>
           <View style={[styles.metricCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-            <MaterialCommunityIcons name="currency-inr" size={24} color={theme.primary} />
-            <Text style={[styles.metricValue, { color: theme.text }]}>{totalValue}</Text>
-            <Text style={[styles.metricLabel, { color: theme.muted }]}>Quoted value</Text>
+            <MaterialCommunityIcons name="molecule-co2" size={24} color="#00BCD4" />
+            <Text style={[styles.metricValue, { color: theme.text }]}>{(completedCount * 45).toFixed(0)} kg</Text>
+            <Text style={[styles.metricLabel, { color: theme.muted }]}>CO2 Offset</Text>
+          </View>
+        </View>
+
+        <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }, { marginBottom: 20 }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 0 }]}>Live Analytics</Text>
+            <View style={{ backgroundColor: 'rgba(32, 201, 151, 0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+              <Text style={{ color: '#20C997', fontSize: 10, fontWeight: '800' }}>LIVE UPDATES</Text>
+            </View>
+          </View>
+
+          <View style={{ gap: 20 }}>
+            <View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={{ color: theme.muted, fontSize: 13 }}>Platform Growth (Monthly)</Text>
+                <Text style={{ color: '#20C997', fontWeight: '700', fontSize: 13 }}>+14.2%</Text>
+              </View>
+              <View style={{ height: 40, flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
+                {[30, 45, 35, 60, 50, 85, 70, 95].map((h, i) => (
+                  <View key={i} style={{ flex: 1, height: `${h}%`, backgroundColor: i === 7 ? theme.primary : isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 4 }} />
+                ))}
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#F8FAF9', padding: 12, borderRadius: 12 }}>
+                <Text style={{ color: theme.muted, fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>Landfill Diversion</Text>
+                <Text style={{ color: theme.text, fontSize: 18, fontWeight: '800' }}>82%</Text>
+                <View style={{ height: 4, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 2, marginTop: 8 }}>
+                  <View style={{ width: '82%', height: '100%', backgroundColor: '#F9A826', borderRadius: 2 }} />
+                </View>
+              </View>
+              <View style={{ flex: 1, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#F8FAF9', padding: 12, borderRadius: 12 }}>
+                <Text style={{ color: theme.muted, fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>Active Recyclers</Text>
+                <Text style={{ color: theme.text, fontSize: 18, fontWeight: '800' }}>24 Hubs</Text>
+                <Text style={{ color: '#20C997', fontSize: 10, marginTop: 4 }}>• 3 Online Now</Text>
+              </View>
+            </View>
+
+            <View style={{ marginTop: 10 }}>
+              <Text style={{ color: theme.muted, fontSize: 13, marginBottom: 12 }}>Recycling Breakdown (by Category)</Text>
+              {[
+                { label: 'Personal Gadgets', value: '45%', color: theme.primary },
+                { label: 'Home Appliances', value: '30%', color: '#F9A826' },
+                { label: 'Large Electronics', value: '15%', color: '#3395FF' },
+                { label: 'Mixed E-Scrap', value: '10%', color: '#A7C4BA' }
+              ].map(item => (
+                <View key={item.label} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.color, marginRight: 8 }} />
+                  <Text style={{ flex: 1, color: theme.text, fontSize: 12 }}>{item.label}</Text>
+                  <Text style={{ color: theme.muted, fontSize: 12, fontWeight: '700' }}>{item.value}</Text>
+                  <View style={{ width: 100, height: 6, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F0F0F0', borderRadius: 3, marginLeft: 12, overflow: 'hidden' }}>
+                    <View style={{ width: item.value, height: '100%', backgroundColor: item.color }} />
+                  </View>
+                </View>
+              ))}
+            </View>
           </View>
         </View>
 
         <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>Recent Platform Activity</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 0 }]}>Recent Platform Activity</Text>
+            <Pressable onPress={() => navigation.navigate('AdminRequests')}>
+              <Text style={{ color: theme.primary, fontSize: 13, fontWeight: '700' }}>View All</Text>
+            </Pressable>
+          </View>
+          
           {!pickupHistory.length ? (
             <Text style={[styles.emptyText, { color: theme.muted }]}>No requests have been created yet.</Text>
           ) : (
             pickupHistory.slice(0, 5).map((request) => {
               const statusMeta = getRequestStatusMeta(request.status);
+              const statusColor = {
+                neutral: theme.muted,
+                active: theme.primary,
+                warning: '#F9A826',
+                success: '#20C997',
+                danger: '#FF5252'
+              }[statusMeta.tone] || theme.primary;
+
               return (
                 <Pressable 
                   key={request.id} 
-                  style={[styles.adminActivityRow, isDarkMode && { borderBottomColor: 'rgba(255,255,255,0.05)' }]}
+                  style={[
+                    { 
+                      flexDirection: 'row', 
+                      alignItems: 'center', 
+                      paddingVertical: 12, 
+                      borderBottomWidth: 1, 
+                      borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F0F0F0' 
+                    }
+                  ]}
                   onPress={() => navigation.getParent()?.navigate('TrackPickup', { pickupId: request.id })}
                 >
-                  <View style={styles.adminActivityText}>
-                    <Text style={[styles.requestCardTitle, { color: theme.text }]}>{request.trackingId || request.id}</Text>
-                    <Text style={[styles.requestCardMeta, { color: theme.muted }]}>
-                      {request.requestMode === 'dropoff' ? 'Drop-off' : 'Pickup'} | {request.items.length} items
+                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F8FAF9', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    <MaterialCommunityIcons 
+                      name={request.requestMode === 'dropoff' ? "package-variant" : "truck-delivery"} 
+                      size={20} 
+                      color={theme.primary} 
+                    />
+                  </View>
+                  
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: '700', color: theme.text, fontSize: 14 }}>{request.trackingId || `ID: ${request.id.slice(-6)}`}</Text>
+                    <Text style={{ color: theme.muted, fontSize: 12, marginTop: 2 }}>
+                      {request.items.length} items • ₹{request.totalEstimate}
                     </Text>
                   </View>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      statusMeta.tone === 'success'
-                        ? styles.statusBadgeSuccess
-                        : statusMeta.tone === 'warning'
-                          ? styles.statusBadgeWarning
-                          : statusMeta.tone === 'danger'
-                            ? styles.statusBadgeDanger
-                            : statusMeta.tone === 'active'
-                              ? styles.statusBadgeActive
-                              : styles.statusBadgeNeutral
-                    ]}
-                  >
-                    <Text style={styles.statusBadgeText}>{statusMeta.label}</Text>
+
+                  <View style={{ 
+                    paddingHorizontal: 10, 
+                    paddingVertical: 4, 
+                    borderRadius: 12, 
+                    backgroundColor: `${statusColor}15`,
+                    borderWidth: 1,
+                    borderColor: `${statusColor}30`
+                  }}>
+                    <Text style={{ color: statusColor, fontSize: 11, fontWeight: '700' }}>{statusMeta.label}</Text>
                   </View>
                 </Pressable>
               );
@@ -2546,6 +3520,7 @@ function AdminRequestsScreen({ navigation }) {
                 </View>
                 <Text style={[styles.requestDetailLine, { color: theme.text }]}>Mode: {request.requestMode === 'dropoff' ? 'Drop-off' : 'Doorstep Pickup'}</Text>
                 <Text style={[styles.requestDetailLine, { color: theme.text }]}>Customer: {request.customerName} ({request.pickupDetails?.phone || '-'})</Text>
+                <Text style={[styles.requestDetailLine, { color: theme.text, fontSize: 13 }]}>Address: {request.pickupDetails?.address || 'N/A'}</Text>
                 <Text style={[styles.requestDetailLine, { color: theme.text }]}>
                   Recycler: {request.assignedRecyclerName || request.pickupPartner?.name || 'Not assigned'}
                 </Text>
@@ -2572,7 +3547,9 @@ function TrackPickupScreen({ navigation, route }) {
   const showPartnerDetails = Boolean(pickup && ASSIGNED_STATUSES.includes(pickup.status));
   const [adminRecyclers, setAdminRecyclers] = useState([]);
   const [showRecyclerModal, setShowRecyclerModal] = useState(false);
+  const [showRazorpay, setShowRazorpay] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
 
   // Refetch the pickup data from the backend after any mutation
   const refetchPickup = React.useCallback(async () => {
@@ -2692,15 +3669,79 @@ function TrackPickupScreen({ navigation, route }) {
             </View>
           </View>
 
+          <View style={[styles.trackingAddressCard, { marginTop: 12, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#FFFFFF' }]}>
+            <MaterialCommunityIcons name="account-outline" size={20} color={theme.primary} />
+            <View style={styles.trackingAddressBody}>
+              <Text style={[styles.trackingAddressLabel, { color: isDarkMode ? '#CFEADE' : theme.muted }]}>
+                {user.role === 'customer' ? 'Assigned Partner' : 'Customer Details'}
+              </Text>
+              <Text style={[styles.trackingAddressValue, { color: isDarkMode ? '#FFFFFF' : theme.text, fontWeight: '700' }]}>
+                {user.role === 'customer' 
+                  ? (pickup.assignedRecyclerName || 'Recycler will be assigned soon') 
+                  : (pickup.customerName || 'GreenByte User')}
+              </Text>
+            </View>
+          </View>
+
           {pickup.estimationReasoning ? (
             <View style={[styles.trackingAddressCard, { marginTop: 12, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F0F7F4', borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'transparent' }]}>
               <MaterialCommunityIcons name="auto-fix" size={20} color={theme.primary} />
               <View style={styles.trackingAddressBody}>
-                <Text style={[styles.trackingAddressLabel, isDarkMode && { color: theme.muted }]}>AI Valuation Insight</Text>
-                <Text style={[styles.trackingAddressValue, isDarkMode && { color: theme.text, opacity: 0.8 }]}>{pickup.estimationReasoning}</Text>
+                <Text style={[styles.trackingAddressLabel, { color: isDarkMode ? '#CFEADE' : theme.muted }]}>AI Valuation Insight</Text>
+                <Text style={[styles.trackingAddressValue, { color: isDarkMode ? '#FFFFFF' : theme.text, opacity: 0.8 }]}>{pickup.estimationReasoning}</Text>
               </View>
             </View>
           ) : null}
+
+          {/* Payout Details Section */}
+          {user.role === 'customer' && pickup.status === 'recycled' && (
+            <View style={[styles.listCard, { marginTop: 12, backgroundColor: isDarkMode ? 'rgba(32, 201, 151, 0.1)' : '#E7F6EF', borderColor: theme.primary, borderWidth: 1 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <MaterialCommunityIcons name="cash-check" size={24} color={theme.primary} />
+                <Text style={{ fontWeight: '800', color: theme.text, fontSize: 16 }}>Payout Required</Text>
+              </View>
+              <Text style={{ color: theme.muted, fontSize: 13, marginBottom: 16, lineHeight: 18 }}>
+                Your items are recycled! Provide your UPI or Bank details so we can issue your payment of ₹{pickup.totalEstimate}.
+              </Text>
+              <Pressable 
+                style={({ pressed }) => [styles.primaryButton, { height: 48, opacity: pressed ? 0.9 : 1 }]}
+                onPress={() => setShowPayoutModal(true)}
+              >
+                <Text style={styles.primaryButtonText}>Provide Payment Details</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Admin Payment View */}
+          {user.role === 'admin' && pickup.status === 'recycled' && pickup.paymentDestination && (
+             <View style={[styles.listCard, { marginTop: 12, backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : '#F0F7F4', borderColor: theme.primary, borderWidth: 1 }]}>
+               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                 <MaterialCommunityIcons name="bank-transfer" size={22} color={theme.primary} />
+                 <Text style={{ fontWeight: '800', color: theme.text, fontSize: 15 }}>Customer Payout Info</Text>
+               </View>
+               {pickup.paymentDestination.type === 'upi' ? (
+                 <View style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#FFF', padding: 12, borderRadius: 10 }}>
+                   <Text style={{ color: theme.muted, fontSize: 12, marginBottom: 4 }}>UPI ID</Text>
+                   <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 16 }}>{pickup.paymentDestination.upiId}</Text>
+                 </View>
+               ) : (
+                 <View style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#FFF', padding: 12, borderRadius: 10, gap: 8 }}>
+                   <View>
+                     <Text style={{ color: theme.muted, fontSize: 11 }}>ACCOUNT HOLDER</Text>
+                     <Text style={{ color: theme.text, fontWeight: '600' }}>{pickup.paymentDestination.accountHolderName}</Text>
+                   </View>
+                   <View>
+                     <Text style={{ color: theme.muted, fontSize: 11 }}>ACCOUNT NUMBER</Text>
+                     <Text style={{ color: theme.text, fontWeight: '600' }}>{pickup.paymentDestination.accountNumber}</Text>
+                   </View>
+                   <View>
+                     <Text style={{ color: theme.muted, fontSize: 11 }}>IFSC CODE</Text>
+                     <Text style={{ color: theme.text, fontWeight: '600' }}>{pickup.paymentDestination.ifscCode}</Text>
+                   </View>
+                 </View>
+               )}
+             </View>
+          )}
 
           {/* Items & Photos Section */}
           <View style={[styles.trackingAddressCard, { marginTop: 12, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#FFFFFF', flexDirection: 'column', alignItems: 'stretch' }]}>
@@ -2757,6 +3798,40 @@ function TrackPickupScreen({ navigation, route }) {
             <Text style={[styles.secondaryButtonText, { color: '#A13A2A' }]}>Cancel Pickup Request</Text>
           </Pressable>
         )}
+
+        {pickup.status === 'recycled' && user?.role === 'customer' && (
+          <View style={[styles.listCard, { backgroundColor: isDarkMode ? 'rgba(32, 201, 151, 0.1)' : '#E7F6EF', borderColor: '#20C997', marginTop: 12 }]}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Payment Ready</Text>
+            <Text style={{ color: theme.muted, marginBottom: 16, fontSize: 14 }}>
+              Your items have been recycled! You are eligible to receive ₹{pickup.totalEstimate}.
+            </Text>
+            <Pressable 
+              style={[styles.primaryButton, { backgroundColor: '#3395FF' }]}
+              onPress={() => setShowRazorpay(true)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name="credit-card-outline" size={20} color="#FFF" />
+                <Text style={styles.primaryButtonText}>Collect ₹{pickup.totalEstimate} via Razorpay</Text>
+              </View>
+            </Pressable>
+          </View>
+        )}
+
+        <RazorpayModal 
+          visible={showRazorpay}
+          amount={pickup.totalEstimate}
+          onClose={() => setShowRazorpay(false)}
+          onComplete={async () => {
+            setShowRazorpay(false);
+            try {
+              await apiRequest(`/admin/requests/${pickup.id}/pay`, { method: 'POST', body: JSON.stringify({ adminId: 'system' }) });
+              await refetchPickup();
+              showToast('Payment successful! Funds transferred to your bank account.');
+            } catch (e) {
+              showToast(e.message, 'error');
+            }
+          }}
+        />
 
         {user?.role === 'admin' && (
           <Pressable 
@@ -3060,6 +4135,16 @@ function TrackPickupScreen({ navigation, route }) {
             }
           }}
         />
+        <PayoutDetailsModal
+          visible={showPayoutModal}
+          pickupId={pickup.id}
+          onClose={() => setShowPayoutModal(false)}
+          onComplete={async () => {
+            setShowPayoutModal(false);
+            await refetchPickup();
+            showToast('Payment details submitted successfully.');
+          }}
+        />
         <FullscreenImageModal
           visible={!!selectedImage}
           imageUri={selectedImage}
@@ -3076,8 +4161,8 @@ function ProfileScreen({ navigation }) {
   const theme = useTheme();
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone);
-  const [address, setAddress] = useState(user.address);
-
+  const [address, setAddress] = useState(user.address || '');
+  const [showReportModal, setShowReportModal] = useState(false);
   const [saving, setSaving] = useState(false);
   
   const onSave = async () => {
@@ -3134,6 +4219,38 @@ function ProfileScreen({ navigation }) {
         >
           <Text style={[styles.secondaryButtonText, isDarkMode && { color: theme.primary }]}>{saving ? 'Saving...' : 'Save Profile'}</Text>
         </Pressable>
+
+        <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Report Center</Text>
+          <Text style={{ color: theme.muted, fontSize: 13, marginBottom: 14 }}>Download your monthly recycling activity and environmental impact statements.</Text>
+          <Pressable 
+            style={[styles.secondaryMiniButton, { alignSelf: 'flex-start' }]}
+            onPress={() => setShowReportModal(true)}
+          >
+            <MaterialCommunityIcons name="file-pdf-box" size={20} color={theme.primary} />
+            <Text style={[styles.secondaryButtonText, { marginLeft: 6 }]}>Generate Monthly Report</Text>
+          </Pressable>
+        </View>
+
+        <ReportCenterModal 
+          visible={showReportModal} 
+          onClose={() => setShowReportModal(false)} 
+        />
+
+
+
+        {user.role === 'admin' && (
+          <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Platform Controls</Text>
+            <Pressable 
+              style={[styles.secondaryMiniButton, { alignSelf: 'flex-start' }]}
+              onPress={() => navigation.navigate('ManageCatalog')}
+            >
+              <MaterialCommunityIcons name="database-edit" size={20} color={theme.primary} />
+              <Text style={[styles.secondaryButtonText, { marginLeft: 6 }]}>Manage Price Catalog</Text>
+            </Pressable>
+          </View>
+        )}
 
         <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(10, 40, 35, 0.98)', borderColor: 'rgba(255,255,255,0.1)' }]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Pickup History</Text>
@@ -3336,11 +4453,19 @@ export default function App() {
     address: '',
     availabilityStatus: 'available'
   });
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [pickupDetails, setPickupDetails] = useState({});
   const [pickupHistory, setPickupHistory] = useState([]);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [priceCatalog, setPriceCatalog] = useState(PRICE_CATALOG);
   const [toast, setToast] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [pickupDetails, setPickupDetails] = useState({
+    date: '',
+    time: '',
+    address: '',
+    phone: '',
+    notes: '',
+    mode: 'pickup'
+  });
   const toastTimer = React.useRef(null);
 
   const [fontsLoaded] = useFonts({
@@ -3349,6 +4474,32 @@ export default function App() {
     'Outfit-Bold': Outfit_700Bold,
     'Outfit-Black': Outfit_900Black,
   });
+
+  const fetchCatalog = React.useCallback(async () => {
+    try {
+      const response = await apiRequest('/catalog');
+      if (response.success) {
+        // Ensure original categories always exist
+        const merged = { ...PRICE_CATALOG };
+        Object.keys(merged).forEach(k => merged[k] = []);
+        
+        // Fill with backend items
+        Object.keys(response.data).forEach(cat => {
+          if (cat && cat !== 'null' && cat !== 'undefined') {
+            merged[cat] = response.data[cat];
+          }
+        });
+        
+        setPriceCatalog(merged);
+      }
+    } catch (e) {
+      console.error('Failed to fetch catalog:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCatalog();
+  }, [fetchCatalog]);
 
   useEffect(() => {
     if (fontsLoaded) {
@@ -3376,16 +4527,20 @@ export default function App() {
     () => ({
       user,
       setUser,
-      selectedItems,
-      setSelectedItems,
-      pickupDetails,
-      setPickupDetails,
       pickupHistory,
       setPickupHistory,
+      selectedItems,
+      setSelectedItems,
+      priceCatalog,
+      setPriceCatalog,
+      refreshCatalog: fetchCatalog,
       isDarkMode,
-      toggleDarkMode
+      setIsDarkMode,
+      toggleDarkMode,
+      pickupDetails,
+      setPickupDetails
     }),
-    [user, selectedItems, pickupDetails, pickupHistory, isDarkMode, toggleDarkMode]
+    [user, pickupHistory, selectedItems, priceCatalog, isDarkMode, toggleDarkMode, fetchCatalog, pickupDetails]
   );
 
   if (!fontsLoaded) {
@@ -3400,6 +4555,9 @@ export default function App() {
             <Stack.Screen name="Splash" component={AppSplashScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="StaffLogin" component={StaffLoginScreen} />
+            <Stack.Screen name="ManageCatalog" component={ManageCatalogScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="EnvironmentalImpact" component={EnvironmentalImpactScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
             <Stack.Screen name="OtpVerification" component={OtpVerificationScreen} options={{ headerShown: false }} />
             <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />

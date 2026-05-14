@@ -7,10 +7,22 @@ function generateOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-async function registerUser(payload) {
-  const normalizedPhone = payload.phone.replace(/\D/g, '');
-  const existingUser = await User.findOne({ phone: normalizedPhone });
+// Constant admin credentials
+const ADMIN_PHONE = '0000000000'; // Using a distinct number to avoid collisions
+const ADMIN_PASSWORD = 'admin_secret_password';
 
+async function registerUser(payload) {
+  if (payload.role === 'admin') {
+    throw new ApiError(403, 'Admin registration is disabled');
+  }
+  const normalizedPhone = payload.phone.replace(/\D/g, '');
+  
+  // Prevent registration with the admin phone number
+  if (normalizedPhone === ADMIN_PHONE) {
+    throw new ApiError(403, 'This phone number is reserved for system administration');
+  }
+
+  const existingUser = await User.findOne({ phone: normalizedPhone });
   if (existingUser) {
     throw new ApiError(409, 'A user with this phone number already exists');
   }
@@ -49,13 +61,37 @@ async function registerUser(payload) {
 
 async function loginWithPhone({ phone, role, password }) {
   const normalizedPhone = phone.replace(/\D/g, '');
+
+  // Special case for Admin with constant credentials
+  if (role === 'admin' && normalizedPhone === ADMIN_PHONE) {
+    if (password === ADMIN_PASSWORD) {
+      // Find or create the system admin
+      let adminUser = await User.findOne({ phone: ADMIN_PHONE });
+      if (!adminUser) {
+        const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
+        adminUser = await User.create({
+          name: 'System Admin',
+          phone: ADMIN_PHONE,
+          password: hashedPassword,
+          role: 'admin',
+          isVerified: true
+        });
+      } else if (adminUser.role !== 'admin') {
+        adminUser.role = 'admin';
+        await adminUser.save();
+      }
+      return adminUser;
+    } else {
+      throw new ApiError(401, 'Invalid admin password');
+    }
+  }
+
   const user = await User.findOne({ phone: normalizedPhone, role });
 
   if (!user) {
     throw new ApiError(404, `No ${role} account found for this phone number`);
   }
 
-  // All roles can login with password if one is provided and set
   if (password && user.password) {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -64,7 +100,6 @@ async function loginWithPhone({ phone, role, password }) {
     return user;
   }
 
-  // Admin and recycler MUST use password
   if (role === 'admin' || role === 'recycler') {
     if (!password) {
       throw new ApiError(400, 'Password is required to login');
@@ -72,7 +107,6 @@ async function loginWithPhone({ phone, role, password }) {
     throw new ApiError(401, 'Invalid password');
   }
 
-  // Customer without password — allow through (will use OTP on frontend)
   return user;
 }
 

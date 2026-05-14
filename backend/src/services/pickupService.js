@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const ApiError = require('../utils/apiError');
 const CatalogItem = require('../models/CatalogItem');
 const Pickup = require('../models/Pickup');
@@ -6,10 +7,13 @@ const { calculateImpactFromWeight, round } = require('../utils/calculatePickupMe
 const { estimateWithGemini } = require('./geminiService');
 
 function appendActivity(pickup, { status, actorRole, actorId = null, note = '' }) {
+  // Ensure actorId is a valid ObjectId or null to prevent BSON casting errors
+  const sanitizedActorId = mongoose.Types.ObjectId.isValid(actorId) ? actorId : null;
+  
   pickup.activityLog.push({
     status,
     actorRole,
-    actorId,
+    actorId: sanitizedActorId,
     note
   });
 }

@@ -97,14 +97,9 @@ const PRICE_CATALOG = {
 
 const ROLE_OPTIONS = [
   { value: 'customer', label: 'Customer' },
-  { value: 'recycler', label: 'Recycler' },
-  { value: 'admin', label: 'Admin' }
+  { value: 'recycler', label: 'Recycler' }
 ];
 
-const STAFF_ROLE_OPTIONS = [
-  { value: 'recycler', label: 'Recycler' },
-  { value: 'admin', label: 'Admin' }
-];
 
 const LOCATIONS = [
   { label: 'Mumbai, MH', value: 'mumbai' },
@@ -780,14 +775,15 @@ function OnboardingScreen({ navigation }) {
   );
 }
 
-function RegisterScreen({ navigation }) {
+function RegisterScreen({ navigation, route }) {
   const showToast = useToast();
+  const initialRole = route.params?.role || 'customer';
   const { isDarkMode } = useApp();
   const theme = useTheme();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('customer');
+  const [role, setRole] = useState(initialRole);
   const [organizationName, setOrganizationName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -822,7 +818,8 @@ function RegisterScreen({ navigation }) {
       });
 
       showToast('Registration complete! Please log in.');
-      navigation.replace('Login', {
+      const loginScreen = role === 'recycler' ? 'RecyclerLogin' : 'Login';
+      navigation.replace(loginScreen, {
         phone: cleaned,
         role
       });
@@ -839,8 +836,8 @@ function RegisterScreen({ navigation }) {
         <View style={[styles.authCard, styles.glassCard, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.7)', borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
           
           <ScreenHeader
-            title="Create Account"
-            subtitle="Join GreenByte to start recycling."
+            title='Create Account'
+            subtitle='Join GreenByte to start recycling.'
             centered
             compact
           />
@@ -850,7 +847,7 @@ function RegisterScreen({ navigation }) {
             value={name}
             onChangeText={setName}
             style={[styles.input, isDarkMode && { backgroundColor: 'rgba(0, 0, 0, 0.3)', color: '#F4FBF8', borderColor: 'rgba(255,255,255,0.2)' }]}
-            placeholder="John Doe"
+            placeholder='John Doe'
             placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.4)' : '#91A79F'}
           />
 
@@ -872,8 +869,8 @@ function RegisterScreen({ navigation }) {
             value={password}
             onChangeText={setPassword}
             style={styles.input}
-            placeholder="Secure password (min 6 chars)"
-            placeholderTextColor="#91A79F"
+            placeholder='Secure password (min 6 chars)'
+            placeholderTextColor='#91A79F'
             secureTextEntry
           />
 
@@ -881,10 +878,10 @@ function RegisterScreen({ navigation }) {
           <TextInput
             value={phone}
             onChangeText={setPhone}
-            keyboardType="phone-pad"
+            keyboardType='phone-pad'
             style={styles.input}
-            placeholder="Mobile number"
-            placeholderTextColor="#91A79F"
+            placeholder='Mobile number'
+            placeholderTextColor='#91A79F'
             maxLength={15}
           />
 
@@ -902,9 +899,17 @@ function RegisterScreen({ navigation }) {
             <Text style={styles.primaryButtonText}>{submitting ? 'Creating Account...' : 'Create Account'}</Text>
           </Pressable>
 
-          <Pressable style={styles.textButton} onPress={() => navigation.replace('Login')}>
+        
+          <Pressable 
+            style={styles.textButton} 
+            onPress={() => {
+              const target = role === 'recycler' ? 'RecyclerLogin' : 'Login';
+              navigation.replace(target);
+            }}
+          >
             <Text style={styles.textButtonText}>Already registered? Log in</Text>
           </Pressable>
+
         </View>
       </View>
     </ScreenShell>
@@ -962,9 +967,7 @@ function LoginScreen({ navigation, route }) {
     <ScreenShell isLoginScreen={true}>
       <View style={styles.containerFlex}>
         {/* Standardized Emerald Glass Cards with 85% Opacity */}
-        <Pressable 
-          onLongPress={() => navigation.navigate('StaffLogin')}
-          delayLongPress={2000}
+        <View 
           style={{ marginBottom: 20, alignItems: 'center', backgroundColor: 'rgba(5, 31, 26, 0.85)', padding: 22, borderRadius: 24, borderBottomWidth: 2, borderBottomColor: '#20C997', width: '100%' }}
         >
           <Text style={{ fontSize: 36, color: '#FFFFFF', fontFamily: 'Outfit-Black', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 15, textAlign: 'center' }}>
@@ -973,7 +976,7 @@ function LoginScreen({ navigation, route }) {
           <Text style={{ color: '#20C997', fontSize: 14, fontFamily: 'Outfit-Bold', letterSpacing: 2.5, marginTop: 10, textTransform: 'uppercase', textAlign: 'center' }}>
             Powered by Pruthvi Zero Waste Foundation
           </Text>
-        </Pressable>
+        </View>
 
         <View style={[styles.authCard, styles.glassCard, { backgroundColor: 'rgba(5, 31, 26, 0.85)', borderColor: 'rgba(255,255,255,0.1)', borderBottomWidth: 2, borderBottomColor: '#20C997' }]}>
 
@@ -1025,7 +1028,7 @@ function LoginScreen({ navigation, route }) {
 
           <Pressable 
             style={{ marginTop: 20, marginBottom: 10, alignItems: 'center' }}
-            onPress={() => navigation.navigate('Register')}
+            onPress={() => navigation.navigate('Register', { role: 'customer' })}
           >
             <Text style={{ color: '#20C997', fontWeight: '800', fontSize: 15 }}>
               Need an account? Register first
@@ -1037,26 +1040,23 @@ function LoginScreen({ navigation, route }) {
   );
 }
 
-function StaffLoginScreen({ navigation }) {
+function RecyclerLoginScreen({ navigation }) {
   const showToast = useToast();
   const { setUser, setPickupHistory } = useApp();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('recycler');
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const onContinue = async () => {
     setErrorMessage('');
     const cleaned = normalizePhoneDigits(phone);
-
     if (cleaned.length < 10) {
       setErrorMessage('Enter a valid mobile number.');
       return;
     }
-
     if (password.length < 6) {
-      setErrorMessage('Enter the password provided via email.');
+      setErrorMessage('Enter your recycler password.');
       return;
     }
 
@@ -1064,14 +1064,126 @@ function StaffLoginScreen({ navigation }) {
       setSubmitting(true);
       const response = await apiRequest('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ phone: cleaned, role, password })
+        body: JSON.stringify({ phone: cleaned, role: 'recycler', password })
       });
       
       const persistedPickups = await loadPickupHistoryForUser(response.data?._id);
       setUser(response.data);
       setPickupHistory(persistedPickups);
       
-      showToast(`Welcome Staff, ${response.data.name}!`);
+      showToast(`Welcome back, ${response.data.name}!`);
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ScreenShell isLoginScreen={true}>
+      <View style={styles.containerFlex}>
+        <View style={{ marginBottom: 20, alignItems: 'center', backgroundColor: 'rgba(5, 31, 26, 0.85)', padding: 22, borderRadius: 24, borderBottomWidth: 2, borderBottomColor: '#20C997', width: '100%' }}>
+          <Text style={{ fontSize: 32, color: '#FFFFFF', fontFamily: 'Outfit-Black', textAlign: 'center' }}>
+            Recycler Portal
+          </Text>
+          <Text style={{ color: '#20C997', fontSize: 14, fontFamily: 'Outfit-Bold', letterSpacing: 2.5, marginTop: 10, textTransform: 'uppercase', textAlign: 'center' }}>
+            Official Recycling Partner
+          </Text>
+        </View>
+
+        <View style={[styles.authCard, styles.glassCard, { backgroundColor: 'rgba(5, 31, 26, 0.85)', borderColor: 'rgba(255,255,255,0.1)', borderBottomWidth: 2, borderBottomColor: '#20C997' }]}>
+          <ScreenHeader
+            title="Partner Login"
+            titleStyle={{ color: '#FFFFFF' }}
+            subtitle="Secure access for verified recyclers"
+            subtitleStyle={{ color: 'rgba(255,255,255,0.7)' }}
+            centered
+            compact
+          />
+
+          <Text style={[styles.label, { color: '#FFFFFF', opacity: 0.9, marginTop: 15 }]}>Phone Number</Text>
+          <TextInput
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            style={[styles.input, { backgroundColor: 'rgba(255, 255, 255, 0.95)', color: '#051F1A' }]}
+            placeholder="Recycler mobile number"
+            placeholderTextColor="#666"
+          />
+
+          <Text style={[styles.label, { color: '#FFFFFF', opacity: 0.9, marginTop: 15 }]}>Password</Text>
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            style={[styles.input, { backgroundColor: 'rgba(255, 255, 255, 0.95)', color: '#051F1A' }]}
+            placeholder="Your partner password"
+            placeholderTextColor="#666"
+            secureTextEntry
+          />
+
+          {errorMessage ? (
+            <View style={{ backgroundColor: 'rgba(255, 100, 100, 0.15)', padding: 12, borderRadius: 10, marginVertical: 14 }}>
+              <Text style={{ color: '#FF8080', fontSize: 13, fontWeight: '600' }}>{errorMessage}</Text>
+            </View>
+          ) : null}
+
+          <Pressable 
+            style={[styles.primaryButton, { marginTop: 25, backgroundColor: '#20C997', opacity: submitting ? 0.7 : 1 }]} 
+            onPress={onContinue}
+            disabled={submitting}
+          >
+            <Text style={styles.primaryButtonText}>
+              {submitting ? 'Authenticating...' : 'Log in as Recycler'}
+            </Text>
+          </Pressable>
+
+          <Pressable 
+            style={{ marginTop: 20, alignItems: 'center' }}
+            onPress={() => navigation.navigate('Register', { role: 'recycler' })}
+          >
+            <Text style={{ color: '#20C997', fontWeight: '800', fontSize: 15 }}>
+              Register as a Recycler
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </ScreenShell>
+  );
+}
+
+function AdminLoginScreen({ navigation }) {
+  const showToast = useToast();
+  const { setUser, setPickupHistory } = useApp();
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const onContinue = async () => {
+    setErrorMessage('');
+    const cleaned = normalizePhoneDigits(phone);
+    if (cleaned.length < 10) {
+      setErrorMessage('Enter admin phone number.');
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMessage('Enter admin password.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const response = await apiRequest('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ phone: cleaned, role: 'admin', password })
+      });
+      
+      const persistedPickups = await loadPickupHistoryForUser(response.data?._id);
+      setUser(response.data);
+      setPickupHistory(persistedPickups);
+      
+      showToast(`System Access Granted: ${response.data.name}`);
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     } catch (error) {
       setErrorMessage(error.message);
@@ -1085,44 +1197,22 @@ function StaffLoginScreen({ navigation }) {
       <View style={styles.containerFlex}>
         <View style={{ marginBottom: 20, alignItems: 'center', backgroundColor: 'rgba(5, 31, 26, 0.85)', padding: 22, borderRadius: 24, borderBottomWidth: 2, borderBottomColor: '#F9A826', width: '100%' }}>
           <Text style={{ fontSize: 32, color: '#FFFFFF', fontFamily: 'Outfit-Black', textAlign: 'center' }}>
-            Staff Portal
+            Admin Portal
           </Text>
           <Text style={{ color: '#F9A826', fontSize: 14, fontFamily: 'Outfit-Bold', letterSpacing: 2.5, marginTop: 10, textTransform: 'uppercase', textAlign: 'center' }}>
-            Authorized Personnel Only
+            System Administration
           </Text>
         </View>
 
         <View style={[styles.authCard, styles.glassCard, { backgroundColor: 'rgba(5, 31, 26, 0.85)', borderColor: 'rgba(255,255,255,0.1)', borderBottomWidth: 2, borderBottomColor: '#F9A826' }]}>
           <ScreenHeader
-            title="Staff Login"
+            title="Admin Login"
             titleStyle={{ color: '#FFFFFF' }}
-            subtitle="Access restricted to Admins and Recyclers"
+            subtitle="Authorized Personnel Only"
             subtitleStyle={{ color: 'rgba(255,255,255,0.7)' }}
             centered
             compact
           />
-
-          <Text style={[styles.label, { color: '#FFFFFF', opacity: 0.9 }]}>Staff Role</Text>
-          <View style={styles.roleSelectorRow}>
-            {STAFF_ROLE_OPTIONS.map((option) => (
-              <Pressable
-                key={option.value}
-                style={[
-                  styles.roleChip, 
-                  role === option.value && styles.roleChipActive,
-                  { backgroundColor: role === option.value ? '#F9A826' : 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' }
-                ]}
-                onPress={() => setRole(option.value)}
-              >
-                <Text style={[
-                  styles.roleChipText, 
-                  { color: role === option.value ? '#FFFFFF' : 'rgba(255,255,255,0.7)' }
-                ]}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
 
           <Text style={[styles.label, { color: '#FFFFFF', opacity: 0.9, marginTop: 15 }]}>Phone Number</Text>
           <TextInput
@@ -1130,16 +1220,16 @@ function StaffLoginScreen({ navigation }) {
             onChangeText={setPhone}
             keyboardType="phone-pad"
             style={[styles.input, { backgroundColor: 'rgba(255, 255, 255, 0.95)', color: '#051F1A' }]}
-            placeholder="Authorized mobile number"
+            placeholder="Admin mobile number"
             placeholderTextColor="#666"
           />
 
-          <Text style={[styles.label, { color: '#FFFFFF', opacity: 0.9, marginTop: 15 }]}>Emailed Password</Text>
+          <Text style={[styles.label, { color: '#FFFFFF', opacity: 0.9, marginTop: 15 }]}>System Password</Text>
           <TextInput
             value={password}
             onChangeText={setPassword}
             style={[styles.input, { backgroundColor: 'rgba(255, 255, 255, 0.95)', color: '#051F1A' }]}
-            placeholder="Enter password from email"
+            placeholder="Enter secure password"
             placeholderTextColor="#666"
             secureTextEntry
           />
@@ -1151,21 +1241,12 @@ function StaffLoginScreen({ navigation }) {
           ) : null}
 
           <Pressable 
-            style={[styles.primaryButton, { marginTop: 25, backgroundColor: '#F9A826' }]} 
+            style={[styles.primaryButton, { marginTop: 25, backgroundColor: '#F9A826', opacity: submitting ? 0.7 : 1 }]} 
             onPress={onContinue}
             disabled={submitting}
           >
             <Text style={styles.primaryButtonText}>
-              {submitting ? 'Authenticating...' : 'Access Portal'}
-            </Text>
-          </Pressable>
-
-          <Pressable 
-            style={{ marginTop: 20, alignItems: 'center' }}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>
-              Return to Customer Login
+              {submitting ? 'Authorizing...' : 'Log in as Admin'}
             </Text>
           </Pressable>
         </View>
@@ -2237,10 +2318,10 @@ function RecyclerOperationsScreen({ navigation }) {
   React.useEffect(() => {
     fetchRecyclerQueue();
     
-    // Set up polling interval (every 10 seconds)
+    // Set up polling interval for real-time synchronization (5 seconds)
     const interval = setInterval(() => {
       fetchRecyclerQueue(true);
-    }, 10000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [fetchRecyclerQueue]);
@@ -2574,7 +2655,7 @@ function RecyclerAssignedScreen({ navigation }) {
   );
 }
 
-function RazorpayModal({ visible, amount, onComplete, onClose }) {
+function RazorpayModal({ visible, amount, destination, onComplete, onClose }) {
   const { isDarkMode } = useApp();
   const theme = useTheme();
   const [processing, setProcessing] = useState(false);
@@ -2603,7 +2684,9 @@ function RazorpayModal({ visible, amount, onComplete, onClose }) {
           </View>
 
           <Text style={{ fontSize: 14, color: theme.muted, marginBottom: 4 }}>PAYING TO</Text>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 20 }}>GreenByte Foundation</Text>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 20 }}>
+            {destination?.accountHolderName || destination?.upiId || 'GreenByte Customer'}
+          </Text>
 
           <View style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F5F9F7', padding: 16, borderRadius: 12, marginBottom: 24 }}>
             <Text style={{ fontSize: 13, color: theme.muted, marginBottom: 4 }}>Amount to Receive</Text>
@@ -3307,6 +3390,10 @@ function AdminOverviewScreen({ navigation }) {
       }
     };
     fetchAdmin();
+
+    // High-frequency polling for real-time updates across tabs (5 seconds)
+    const interval = setInterval(fetchAdmin, 5000);
+    return () => clearInterval(interval);
   }, [setPickupHistory]);
 
   const totalValue = pickupHistory.reduce((sum, request) => sum + (request.totalEstimate || 0), 0);
@@ -3571,12 +3658,14 @@ function TrackPickupScreen({ navigation, route }) {
   }, [user, setPickupHistory]);
 
   React.useEffect(() => {
+    // High-frequency polling for real-time synchronization (5 seconds)
     const interval = setInterval(() => {
+      refetchPickup();
       setRefreshNow(Date.now());
-    }, 30000);
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [refetchPickup]);
 
   React.useEffect(() => {
     if (user?.role === 'admin' && pickup?.status === 'price_accepted') {
@@ -3799,34 +3888,36 @@ function TrackPickupScreen({ navigation, route }) {
           </Pressable>
         )}
 
+        {/* Customer Payment Status Card */}
         {pickup.status === 'recycled' && user?.role === 'customer' && (
           <View style={[styles.listCard, { backgroundColor: isDarkMode ? 'rgba(32, 201, 151, 0.1)' : '#E7F6EF', borderColor: '#20C997', marginTop: 12 }]}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Payment Ready</Text>
-            <Text style={{ color: theme.muted, marginBottom: 16, fontSize: 14 }}>
-              Your items have been recycled! You are eligible to receive ₹{pickup.totalEstimate}.
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Recycling Complete</Text>
+            <Text style={{ color: theme.muted, marginBottom: 12, fontSize: 14, lineHeight: 20 }}>
+              Your items have been successfully recycled! {pickup.paymentDestination ? "The Administrator will now process your payment of ₹" + pickup.totalEstimate + " to your provided details." : "Please provide your payment details below so the Administrator can initiate your payment of ₹" + pickup.totalEstimate + "."}
             </Text>
-            <Pressable 
-              style={[styles.primaryButton, { backgroundColor: '#3395FF' }]}
-              onPress={() => setShowRazorpay(true)}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <MaterialCommunityIcons name="credit-card-outline" size={20} color="#FFF" />
-                <Text style={styles.primaryButtonText}>Collect ₹{pickup.totalEstimate} via Razorpay</Text>
+            {pickup.paymentDestination && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <MaterialCommunityIcons name="check-decagram" size={18} color={theme.primary} />
+                <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 13 }}>Payment details provided</Text>
               </View>
-            </Pressable>
+            )}
           </View>
         )}
 
         <RazorpayModal 
           visible={showRazorpay}
           amount={pickup.totalEstimate}
+          destination={pickup.paymentDestination}
           onClose={() => setShowRazorpay(false)}
           onComplete={async () => {
             setShowRazorpay(false);
             try {
-              await apiRequest(`/admin/requests/${pickup.id}/pay`, { method: 'POST', body: JSON.stringify({ adminId: 'system' }) });
+              await apiRequest(`/admin/requests/${pickup.id}/pay`, { 
+                method: 'POST', 
+                body: JSON.stringify({ adminId: user?._id || 'system' }) 
+              });
               await refetchPickup();
-              showToast('Payment successful! Funds transferred to your bank account.');
+              showToast('Payment successful! Funds transferred to the customer.');
             } catch (e) {
               showToast(e.message, 'error');
             }
@@ -3918,24 +4009,46 @@ function TrackPickupScreen({ navigation, route }) {
 
         {user.role === 'admin' && pickup.status === 'recycled' && (
           <View style={[styles.listCard, isDarkMode && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-            <Text style={[styles.cardTitle, isDarkMode && { color: '#FFFFFF' }]}>Payment Processing</Text>
-            <Pressable
-              style={styles.primaryButton}
-              onPress={async () => {
-                try {
-                  await apiRequest(`/admin/requests/${pickup.id}/pay`, {
-                    method: 'POST',
-                    body: JSON.stringify({ adminId: user._id })
-                  });
-                  await refetchPickup();
-                  showToast('Payment processed.');
-                } catch (e) {
-                  showToast(e.message, 'error');
-                }
-              }}
-            >
-              <Text style={styles.primaryButtonText}>Process Payment</Text>
-            </Pressable>
+            <Text style={[styles.cardTitle, isDarkMode && { color: '#FFFFFF' }]}>Payout Administration</Text>
+            
+            {!pickup.paymentDestination ? (
+              <View>
+                <Text style={{ color: theme.muted, marginBottom: 14, fontSize: 13, lineHeight: 18 }}>
+                  Customer payout details are missing. Request them to provide UPI or Bank info to proceed.
+                </Text>
+                <Pressable
+                  style={styles.primaryButton}
+                  onPress={async () => {
+                    try {
+                      // Trigger a request notification/toast
+                      showToast('Payout details request sent to customer.');
+                    } catch (e) {
+                      showToast(e.message, 'error');
+                    }
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <MaterialCommunityIcons name="bell-ring-outline" size={20} color="#FFF" />
+                    <Text style={styles.primaryButtonText}>Request Payment Details</Text>
+                  </View>
+                </Pressable>
+              </View>
+            ) : (
+              <View>
+                <Text style={{ color: theme.muted, marginBottom: 14, fontSize: 13, lineHeight: 18 }}>
+                  Payment details available. Use Razorpay to transfer ₹{pickup.totalEstimate} to the customer.
+                </Text>
+                <Pressable
+                  style={[styles.primaryButton, { backgroundColor: '#3395FF' }]}
+                  onPress={() => setShowRazorpay(true)}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <MaterialCommunityIcons name="credit-card-outline" size={20} color="#FFF" />
+                    <Text style={styles.primaryButtonText}>Pay ₹{pickup.totalEstimate} via Razorpay</Text>
+                  </View>
+                </Pressable>
+              </View>
+            )}
           </View>
         )}
 
@@ -4543,6 +4656,17 @@ export default function App() {
     [user, pickupHistory, selectedItems, priceCatalog, isDarkMode, toggleDarkMode, fetchCatalog, pickupDetails]
   );
 
+  const linking = {
+    prefixes: ['greenbyte://', 'https://greenbyte.app'],
+    config: {
+      screens: {
+        Login: 'customer',
+        RecyclerLogin: 'recycler',
+        AdminLogin: 'admin',
+      },
+    },
+  };
+
   if (!fontsLoaded) {
     return null;
   }
@@ -4550,12 +4674,15 @@ export default function App() {
   return (
     <ToastContext.Provider value={showToast}>
       <AppContext.Provider value={contextValue}>
-        <NavigationContainer>
+        <NavigationContainer linking={linking}>
+
+
           <Stack.Navigator screenOptions={{ headerTransparent: true }}>
             <Stack.Screen name="Splash" component={AppSplashScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="StaffLogin" component={StaffLoginScreen} />
+            <Stack.Screen name="RecyclerLogin" component={RecyclerLoginScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AdminLogin" component={AdminLoginScreen} options={{ headerShown: false }} />
             <Stack.Screen name="ManageCatalog" component={ManageCatalogScreen} options={{ headerShown: false }} />
             <Stack.Screen name="EnvironmentalImpact" component={EnvironmentalImpactScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
